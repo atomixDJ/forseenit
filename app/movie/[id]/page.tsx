@@ -10,8 +10,10 @@ import StarRating from "@/components/movie/StarRating";
 import Feed from "@/components/movie/Feed";
 import { getWatchlistStatus } from "@/app/actions/watchlist";
 import { getMovieRating } from "@/app/actions/ratings";
+import { getMovieInteractionStatus } from "@/app/actions/interactions";
 import { getMovieTrailer } from "@/lib/tmdb/getMovieTrailer";
 import TrailerInline from "@/components/movie/TrailerInline";
+import InteractionButtons from "@/components/movie/InteractionButtons";
 import { Star, Clock, Play } from "lucide-react";
 
 export default async function MoviePage({
@@ -22,12 +24,13 @@ export default async function MoviePage({
     const { id } = await params;
     const movieId = Number(id);
 
-    const [movie, recommendations, isSaved, userRating, trailer] = await Promise.all([
+    const [movie, recommendations, isSaved, userRating, trailer, interactions] = await Promise.all([
         getMovieDetails(id),
         getRecommendations(id),
         getWatchlistStatus(movieId),
         getMovieRating(movieId),
-        getMovieTrailer(movieId)
+        getMovieTrailer(movieId),
+        getMovieInteractionStatus(movieId)
     ]);
 
     if (!movie) {
@@ -58,6 +61,11 @@ export default async function MoviePage({
 
                                 <div className="space-y-4">
                                     <WatchlistButton movie={movie} initialIsSaved={isSaved} />
+                                    <InteractionButtons
+                                        movieId={movieId}
+                                        initialFavorite={interactions.favorite}
+                                        initialWatched={interactions.watched}
+                                    />
                                     <div className="bg-[#1b2228]/60 p-5 rounded-[4px] border border-white/5 backdrop-blur-sm">
                                         <StarRating movieId={movieId} initialRating={userRating} />
                                     </div>

@@ -29,6 +29,7 @@ export default function StarRating({ movieId, initialRating }: StarRatingProps) 
             const res = await deleteRating(movieId);
             if (res.success) {
                 setRating(null);
+                router.refresh();
             } else if (res.error === "Unauthorized") {
                 router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
             }
@@ -40,6 +41,7 @@ export default function StarRating({ movieId, initialRating }: StarRatingProps) 
         const res = await saveRating(movieId, value);
         if (res.success) {
             setRating(value);
+            router.refresh();
         } else if (res.error === "Unauthorized") {
             router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
         }

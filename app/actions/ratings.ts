@@ -18,25 +18,40 @@ export async function saveRating(movieId: number, value: number) {
     const userId = session.user.id;
 
     try {
-        const rating = await prisma.rating.upsert({
-            where: {
-                userId_movieId: {
+        await prisma.$transaction([
+            prisma.rating.upsert({
+                where: {
+                    userId_movieId: {
+                        userId,
+                        movieId,
+                    },
+                },
+                update: {
+                    value,
+                },
+                create: {
+                    userId,
+                    movieId,
+                    value,
+                },
+            }),
+            prisma.userWatched.upsert({
+                where: {
+                    userId_movieId: {
+                        userId,
+                        movieId,
+                    },
+                },
+                update: {}, // Keep existing watched status
+                create: {
                     userId,
                     movieId,
                 },
-            },
-            update: {
-                value,
-            },
-            create: {
-                userId,
-                movieId,
-                value,
-            },
-        });
+            })
+        ]);
 
         revalidatePath(`/movie/${movieId}`);
-        return { success: true, rating };
+        return { success: true };
     } catch (error) {
         console.error("Failed to save rating:", error);
         return { error: "Failed to save rating" };

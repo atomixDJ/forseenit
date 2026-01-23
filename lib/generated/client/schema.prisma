@@ -18,6 +18,8 @@ model User {
   sessions      Session[]
   watchlist     WatchlistMovie[]
   ratings       Rating[]
+  userFavorites UserFavorite[]   @relation("FavoriteToUser")
+  userWatched   UserWatched[]    @relation("UserToWatched")
   ballots       Ballot[]
 
   createdAt DateTime @default(now())
@@ -90,6 +92,29 @@ model Rating {
   movieId Int
   value   Float // 0.5 to 5.0
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, movieId])
+}
+
+model UserFavorite {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, name: "FavoriteToUser")
+
+  movieId   Int // TMDB ID
+  createdAt DateTime @default(now())
+
+  @@unique([userId, movieId])
+}
+
+model UserWatched {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserToWatched")
+
+  movieId   Int // TMDB ID
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
