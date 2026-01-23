@@ -6,9 +6,13 @@ import HeroBackdrop from "@/components/movie/HeroBackdrop";
 import WatchProviders from "@/components/movie/WatchProviders";
 import Image from "next/image";
 import WatchlistButton from "@/components/movie/WatchlistButton";
+import StarRating from "@/components/movie/StarRating";
 import Feed from "@/components/movie/Feed";
 import { getWatchlistStatus } from "@/app/actions/watchlist";
-import { Star, Clock } from "lucide-react";
+import { getMovieRating } from "@/app/actions/ratings";
+import { getMovieTrailer } from "@/lib/tmdb/getMovieTrailer";
+import TrailerInline from "@/components/movie/TrailerInline";
+import { Star, Clock, Play } from "lucide-react";
 
 export default async function MoviePage({
     params,
@@ -16,11 +20,15 @@ export default async function MoviePage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
-    const [movie, recommendations] = await Promise.all([
+    const movieId = Number(id);
+
+    const [movie, recommendations, isSaved, userRating, trailer] = await Promise.all([
         getMovieDetails(id),
-        getRecommendations(id)
+        getRecommendations(id),
+        getWatchlistStatus(movieId),
+        getMovieRating(movieId),
+        getMovieTrailer(movieId)
     ]);
-    const isSaved = await getWatchlistStatus(Number(id));
 
     if (!movie) {
         return <div className="min-h-screen bg-[#14181c] text-white flex items-center justify-center font-bold">Movie not found</div>;
@@ -41,18 +49,19 @@ export default async function MoviePage({
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
 
                             {/* Left Column: Poster & Actions */}
-                            <div className="lg:col-span-1 space-y-6">
-                                <div className="movie-poster-frame shadow-2xl">
-                                    <Image
-                                        src={getTMDBImage(movie.poster_path, 'w780')}
-                                        alt={movie.title}
-                                        fill
-                                        className="object-cover"
-                                        priority
-                                    />
-                                </div>
+                            <div className="lg:col-span-1 space-y-8">
+                                <TrailerInline
+                                    trailerKey={trailer?.key || null}
+                                    posterPath={getTMDBImage(movie.poster_path, 'w780')}
+                                    title={movie.title}
+                                />
 
-                                <WatchlistButton movie={movie} initialIsSaved={isSaved} />
+                                <div className="space-y-4">
+                                    <WatchlistButton movie={movie} initialIsSaved={isSaved} />
+                                    <div className="bg-[#1b2228]/60 p-5 rounded-[4px] border border-white/5 backdrop-blur-sm">
+                                        <StarRating movieId={movieId} initialRating={userRating} />
+                                    </div>
+                                </div>
 
                                 <div className="bg-[#1b2228]/60 p-6 rounded-[4px] border border-white/5 backdrop-blur-sm">
                                     <WatchProviders providers={movie["watch/providers"]} />

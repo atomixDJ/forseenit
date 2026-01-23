@@ -31,7 +31,7 @@ export default function WatchlistButton({ movie, initialIsSaved }: WatchlistButt
         if (result?.error) {
             setIsSaved(!newState);
             if (result.error === "Unauthorized") {
-                router.push("/auth/signin"); // Check real route
+                router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
             }
         } else {
             setIsSaved(result.added!);

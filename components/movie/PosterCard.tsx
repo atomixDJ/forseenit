@@ -11,6 +11,7 @@ interface PosterCardProps {
     streamingService?: string;
     awardStatus?: string;
     noLink?: boolean;
+    userRating?: number | null;
     className?: string;
 }
 
@@ -20,6 +21,7 @@ export default function PosterCard({
     streamingService,
     awardStatus,
     noLink = false,
+    userRating,
     className = ""
 }: PosterCardProps) {
     // TMDB Trending movies don't have runtime or status in the list view data usually
@@ -48,6 +50,12 @@ export default function PosterCard({
                 {streamingService && (
                     <div className="bg-[#1b2228]/90 backdrop-blur-sm border border-white/10 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-[2px] tracking-tight shadow-lg uppercase">
                         {streamingService}
+                    </div>
+                )}
+                {userRating && (
+                    <div className="bg-brand text-black text-[9px] font-black px-1.5 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5">
+                        <Star className="w-2 h-2 fill-black" strokeWidth={3} />
+                        <span>{userRating.toFixed(1)}</span>
                     </div>
                 )}
             </div>

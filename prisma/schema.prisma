@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../lib/generated/client"
 }
 
 model User {
@@ -112,4 +113,55 @@ model Ballot {
   updatedAt   DateTime @updatedAt
   
   @@unique([userId, eventYear, category])
+}
+
+model AwardEvent {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  type        String   // "FESTIVAL" | "AWARD_SHOW"
+  seasons     AwardSeason[]
+}
+
+model AwardSeason {
+  id          String     @id @default(cuid())
+  eventId     String
+  event       AwardEvent @relation(fields: [eventId], references: [id])
+  year        Int        // Ceremony Year
+  season      String     @default("2024_2025") // e.g. "2025_2026"
+  phase       String     @default("COMING_SOON") // "COMING_SOON" | "NOMINATIONS" | "WINNERS"
+  date        DateTime?  // Ceremony Date
+  winners     AwardWinner[]
+  
+  @@unique([eventId, year])
+  @@unique([eventId, season])
+  @@index([season])
+}
+
+model Movie {
+  tmdbId          Int      @id
+  title           String
+  posterPath      String?
+  eligibleDate    DateTime
+  eligibilityYear Int
+  seasonKey       String   // e.g. "2025_2026"
+  winners         AwardWinner[]
+}
+
+model AwardWinner {
+  id          String   @id @default(cuid())
+  seasonId    String
+  seasonRel   AwardSeason @relation(fields: [seasonId], references: [id])
+  prizeName   String   // e.g. "Palme d'Or" or "Best Picture"
+  movieId     Int      // TMDB ID
+  movie       Movie    @relation(fields: [movieId], references: [tmdbId])
+  movieTitle  String
+  posterPath  String?  // Movie poster
+  personName  String?
+  personPath  String?  // TMDb profile_path for fallback
+  isWinner    Boolean  @default(false)
+  sourceUrl   String?
+  createdAt   DateTime @default(now())
+
+  @@index([movieId])
 }

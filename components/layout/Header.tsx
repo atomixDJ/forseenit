@@ -1,8 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
 import AuthButton from '@/components/auth/AuthButton';
+import AgentToggle from '@/components/ai/AgentToggle';
+import { auth } from '@/auth';
 
-export default function Header() {
+export default async function Header() {
+    const session = await auth();
+
     return (
         <header className="glass sticky top-0 z-50 py-3">
             <div className="container-custom flex items-center justify-between">
@@ -21,8 +25,20 @@ export default function Header() {
                     <Link href="/" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
                         Films
                     </Link>
+                    {session && (
+                        <Link href="/watchlist" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
+                            Watchlist
+                        </Link>
+                    )}
                     <Link href="/awards" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
                         Awards
+                    </Link>
+                    <Link
+                        href="/ballot"
+                        className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors relative group"
+                    >
+                        Ballot
+                        <span className="absolute -top-1 -right-1 w-1 h-1 bg-brand rounded-full transition-transform group-hover:scale-150" />
                     </Link>
                     <Link href="/search" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
                         Search
@@ -30,7 +46,8 @@ export default function Header() {
                 </nav>
 
                 <div className="flex items-center gap-4 ml-auto">
-                    <AuthButton />
+                    {/* {session && <AgentToggle />} */}
+                    <AuthButton session={session} />
                 </div>
             </div>
         </header>

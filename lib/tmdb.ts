@@ -4,7 +4,7 @@ const API_KEY = process.env.TMDB_API_KEY;
 type TMDBImageSize = 'w300' | 'w500' | 'w780' | 'w1280' | 'original';
 
 export function getTMDBImage(path: string | null, size: TMDBImageSize = 'w780') {
-    if (!path) return 'https://placehold.co/500x750/121212/ffffff?text=No+Poster';
+    if (!path) return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9Ijc1MCIgdmlld0JveD0iMCAwIDUwMCA3NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwMCIgaGVpZ2h0PSI3NTAiIGZpbGw9IiMxYTIyMjgiLz48cGF0aCBkPSJNMjUwIDMwMExDMjUwIDMwMCAyMjUgMzUwIDIwMCAzNTBDMTc1IDM1MCAxNzUgMzAwIDE3NSAzMDBMMjUwIDMwMFoiIGZpbGw9IiMzMzQ0NTUiLz48L3N2Zz4='; // Dark slate premium placeholder
     return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
@@ -40,6 +40,7 @@ export interface Movie {
     release_date: string;
     vote_average: number;
     genre_ids: number[];
+    genres?: Array<{ id: number; name: string }>;
     runtime: number; // in minutes
     release_dates: {
         results: Array<{
