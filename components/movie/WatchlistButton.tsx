@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Check, Loader2 } from "lucide-react";
-import { toggleWatchlist } from "@/app/actions/watchlist";
+import { toggleWatchlist } from "@/app/actions/interactions";
 import { useRouter } from "next/navigation";
 
 interface WatchlistButtonProps {
@@ -26,7 +26,7 @@ export default function WatchlistButton({ movie, initialIsSaved }: WatchlistButt
         const newState = !isSaved;
         setIsSaved(newState);
 
-        const result = await toggleWatchlist(movie);
+        const result = await toggleWatchlist(movie.id);
 
         if (result?.error) {
             setIsSaved(!newState);
@@ -34,7 +34,7 @@ export default function WatchlistButton({ movie, initialIsSaved }: WatchlistButt
                 router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
             }
         } else {
-            setIsSaved(result.added!);
+            setIsSaved(result.watchlisted!);
         }
 
         setIsLoading(false);

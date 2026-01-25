@@ -12,6 +12,7 @@ interface PosterCardProps {
     awardStatus?: string;
     noLink?: boolean;
     userRating?: number | null;
+    isAvailable?: boolean;
     className?: string;
 }
 
@@ -22,6 +23,7 @@ export default function PosterCard({
     awardStatus,
     noLink = false,
     userRating,
+    isAvailable = false,
     className = ""
 }: PosterCardProps) {
     // TMDB Trending movies don't have runtime or status in the list view data usually
@@ -56,6 +58,11 @@ export default function PosterCard({
                     <div className="bg-brand text-black text-[9px] font-black px-1.5 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5">
                         <Star className="w-2 h-2 fill-black" strokeWidth={3} />
                         <span>{userRating.toFixed(1)}</span>
+                    </div>
+                )}
+                {isAvailable && (
+                    <div className="bg-brand text-black text-[8px] font-black px-1.5 py-0.5 rounded-[2px] tracking-tighter shadow-lg uppercase">
+                        Available
                     </div>
                 )}
             </div>

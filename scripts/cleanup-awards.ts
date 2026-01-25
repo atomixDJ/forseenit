@@ -20,6 +20,7 @@ async function main() {
 
     for (const winner of winners) {
         const movieSeasonKey = winner.movie.seasonKey;
+        if (!movieSeasonKey) continue;
         const currentSeasonKey = winner.seasonRel.season;
 
         if (movieSeasonKey !== currentSeasonKey) {

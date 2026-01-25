@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Star, StarHalf } from 'lucide-react';
-import { saveRating, deleteRating } from '@/app/actions/ratings';
+import { saveRating } from '@/app/actions/interactions';
 import { useRouter } from 'next/navigation';
 
 interface StarRatingProps {
@@ -23,24 +23,16 @@ export default function StarRating({ movieId, initialRating }: StarRatingProps) 
     const handleRate = async (value: number) => {
         if (isSubmitting) return;
 
-        // If clicking the same rating, toggle it off (delete)
-        if (rating === value) {
-            setIsSubmitting(true);
-            const res = await deleteRating(movieId);
-            if (res.success) {
-                setRating(null);
-                router.refresh();
-            } else if (res.error === "Unauthorized") {
-                router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
-            }
-            setIsSubmitting(false);
-            return;
-        }
+        // If clicking the same rating, we could potentially clear it, 
+        // but for now let's just allow re-rating or keep it simple.
+        if (rating === value) return;
 
         setIsSubmitting(true);
-        const res = await saveRating(movieId, value);
+        const ratingHalf = value * 2;
+        const res = await saveRating(movieId, ratingHalf);
         if (res.success) {
             setRating(value);
+            window.dispatchEvent(new CustomEvent('movieInteraction', { detail: { movieId, type: 'rated', value } }));
             router.refresh();
         } else if (res.error === "Unauthorized") {
             router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);

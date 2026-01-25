@@ -50,27 +50,8 @@ export default async function SearchPage({
                                 )}
                             </div>
                         ) : (
-                            /* Empty State / Agent Prompts */
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-16">
-                                <div className="bg-surface p-8 rounded-lg border border-white/5 hover:border-[#00e054]/50 transition-all cursor-pointer group">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <Sparkles className="h-5 w-5 text-[#00e054]" />
-                                        <h3 className="font-bold text-white uppercase text-xs tracking-wider">Generate a List</h3>
-                                    </div>
-                                    <p className="text-[#99aabb] text-sm leading-relaxed group-hover:text-white transition-colors">
-                                        &ldquo;Best Sci-Fi movies from 2024 available on Netflix&rdquo;
-                                    </p>
-                                </div>
-
-                                <div className="bg-surface p-8 rounded-lg border border-white/5 hover:border-[#40bcf4]/50 transition-all cursor-pointer group">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <Sparkles className="h-5 w-5 text-[#40bcf4]" />
-                                        <h3 className="font-bold text-white uppercase text-xs tracking-wider">Awards Catch-up</h3>
-                                    </div>
-                                    <p className="text-[#99aabb] text-sm leading-relaxed group-hover:text-white transition-colors">
-                                        &ldquo;Essential Golden Globe nominees I haven&apos;t watched yet&rdquo;
-                                    </p>
-                                </div>
+                            <div className="text-center py-20 text-[#334455] italic uppercase text-[10px] font-bold tracking-[0.4em]">
+                                Search for any film, actor or director...
                             </div>
                         )}
                     </div>

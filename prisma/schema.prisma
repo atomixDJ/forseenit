@@ -10,17 +10,32 @@ generator client {
 
 model User {
   id            String          @id @default(cuid())
+  clerkId       String?         @unique  // Clerk identity mapping
   name          String?
   email         String?         @unique
   emailVerified DateTime?
   image         String?
+  lastLoginAt   DateTime?       // Updated on every login
   accounts      Account[]
   sessions      Session[]
-  watchlist     WatchlistMovie[]
-  ratings       Rating[]
-  userFavorites UserFavorite[] @relation("FavoriteToUser")
-  userWatched   UserWatched[]   @relation("UserToWatched")
+  
+  // App Specific Interactions
+  interactions  MovieInteraction[]
+  watchLogs     WatchLog[]
+  reviews       Review[]
+  reviewComments ReviewComment[]
+  reviewFavorites ReviewFavorite[]
+  movieLists    MovieList[]
+  
   ballots       Ballot[]
+  subscriptions StreamingSubscription[]
+  importRuns    ImportRun[]
+  topTen        UserTopTen[]
+  
+  // Auth Bootstrap
+  settings        UserSettings?
+  onboarding      OnboardingState?
+  preferredGenres UserPreferredGenre[]
  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -69,56 +84,181 @@ model VerificationToken {
 
 // App Specific Models
 
-model WatchlistMovie {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MovieInteraction {
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId       Int      // TMDB ID
+  movie         Movie?   @relation(fields: [movieId], references: [tmdbId])
   
-  movieId     Int
-  title       String
-  posterPath  String?
-  backdropPath String?
+  watched       Boolean  @default(false)
+  watchlisted   Boolean  @default(false)
+  favorited     Boolean  @default(false) // Letterboxd "likes"
   
-  addedAt     DateTime @default(now())
+  ratingHalf    Int?     // 0..10 (stars * 2)
+  ratedAt       DateTime?
+  favoritedAt   DateTime?
+  watchedAt     DateTime? // Store lastWatchedAt for UI sorting
+  
+  updatedAt     DateTime @updatedAt
 
-  @@unique([userId, movieId])
+  @@id([userId, movieId])
+  @@index([userId, watched])
+  @@index([userId, favorited])
+  @@index([userId, watchlisted])
+  @@index([userId, updatedAt])
+  @@index([userId, watchedAt])
 }
 
-model Rating {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model WatchLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId       Int      // TMDB ID
   
-  movieId     Int
-  value       Float    // 0.5 to 5.0
+  watchedAt     DateTime
+  rewatch       Boolean  @default(false)
+  tags          String?  // comma-separated or JSON string
+  note          String?  // Short note (diary note)
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  importId      String?
+  importRowId   String?  // Reference to ImportAuditRow.id
+  importRun     ImportRun? @relation(fields: [importId], references: [id])
+  
+  movie         Movie    @relation(fields: [movieId], references: [tmdbId])
+  
+  review        Review?  @relation(name: "ReviewToWatchLog")
 
-  @@unique([userId, movieId])
+  createdAt     DateTime @default(now())
+
+  @@index([userId, movieId, watchedAt])
+  @@index([userId, watchedAt])
+  @@unique([userId, movieId, watchedAt, importId]) // Idempotency
 }
 
-model UserFavorite {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "FavoriteToUser")
+model Review {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId       Int      // TMDB ID
   
-  movieId     Int      // TMDB ID
-  createdAt   DateTime @default(now())
+  watchLogId    String?  @unique
+  watchLog      WatchLog? @relation(fields: [watchLogId], references: [id], name: "ReviewToWatchLog")
+  
+  bodyRaw       String
+  bodyFormat    String   @default("markdown") // "markdown" | "html"
+  
+  ratingHalf    Int?     // 0..10
+  tags          String?  // comma-separated
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@unique([userId, movieId])
+  comments      ReviewComment[]
+  favorites     ReviewFavorite[]
+
+  @@unique([userId, movieId, watchLogId])
+  @@index([movieId])
+  @@index([userId])
 }
 
-model UserWatched {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserToWatched")
+model ReviewComment {
+  id            String   @id @default(cuid())
+  reviewId      String
+  review        Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  movieId     Int      // TMDB ID
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  body          String
+  createdAt     DateTime @default(now())
 
-  @@unique([userId, movieId])
+  @@index([reviewId, createdAt])
+}
+
+model ReviewFavorite {
+  reviewId      String
+  review        Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, userId])
+}
+
+model MovieList {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title         String
+  description   String?
+  tags          String?
+  isRanked      Boolean  @default(false)
+  
+  // System / Collection List Fields
+  isSystem      Boolean  @default(false)
+  systemKey     String?  @unique // Stable ID for seeding ("best_of_2025")
+  isPublic      Boolean  @default(true)
+  
+  // Copy / Fork Provenance
+  sourceListId  String?
+  sourceType    String?  // "SYSTEM" | "USER" (optional, for analytics/tracking)
+  
+  items         MovieListItem[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, title])
+}
+
+model MovieListItem {
+  listId        String
+  list          MovieList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  movieId       Int       // TMDB ID
+  movie         Movie?    @relation(fields: [movieId], references: [tmdbId])
+  
+  position      Int?
+  note          String?
+  
+  addedAt       DateTime @default(now())
+
+  @@id([listId, movieId])
+  @@unique([listId, position])
+}
+
+model ImportRun {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  source        String   @default("letterboxd")
+  status        String   @default("pending") // pending | processing | completed | failed
+  
+  auditRows     ImportAuditRow[]
+  watchLogs     WatchLog[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ImportAuditRow {
+  id            String   @id @default(cuid())
+  importId      String
+  importRun     ImportRun @relation(fields: [importId], references: [id], onDelete: Cascade)
+  
+  fileName      String
+  rowNumber     Int
+  
+  title         String
+  year          Int?
+  letterboxdUrl String?
+  
+  tmdbMovieId   Int?
+  status        String   @default("pending") // matched | ambiguous | unmatched | skipped | error
+  message       String?
+  rawJson       String?  // Store the original row as JSON string
+  
+  @@unique([importId, fileName, rowNumber])
+  @@index([importId, status])
 }
 
 model Ballot {
@@ -167,10 +307,17 @@ model Movie {
   tmdbId          Int      @id
   title           String
   posterPath      String?
-  eligibleDate    DateTime
-  eligibilityYear Int
-  seasonKey       String   // e.g. "2025_2026"
+  backdropPath    String?
+  
+  // Award Specifics (Optional for general movies)
+  eligibleDate    DateTime?
+  eligibilityYear Int?
+  seasonKey       String?   // e.g. "2025_2026"
+  
   winners         AwardWinner[]
+  interactions    MovieInteraction[]
+  watchLogs       WatchLog[]
+  listItems       MovieListItem[]
 }
 
 model AwardWinner {
@@ -189,4 +336,59 @@ model AwardWinner {
   createdAt   DateTime @default(now())
 
   @@index([movieId])
+}
+
+model StreamingSubscription {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  providerId  Int      // TMDB Provider ID
+  name        String
+  logoPath    String?
+  
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, providerId])
+}
+
+model UserSettings {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerMode String   @default("ALL") // "ALL" | "MY_SERVICES", validated in actions
+  region       String?  // 2-letter uppercase, validated at write-time
+  runtimeMin   Int?
+  runtimeMax   Int?     // Enforce runtimeMin <= runtimeMax in actions
+  updatedAt    DateTime @updatedAt
+}
+
+model OnboardingState {
+  userId       String    @id
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
+  lastNudgedAt DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+model UserPreferredGenre {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  genreId Int
+  @@id([userId, genreId])
+  @@index([userId])
+  @@index([genreId])
+}
+
+model UserTopTen {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tmdbId    Int
+  position  Int // 0-indexed
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tmdbId])
+  @@unique([userId, position]) // Prevent duplicates at same position
+  @@index([userId])
 }

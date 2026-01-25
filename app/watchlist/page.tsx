@@ -2,20 +2,20 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/layout/Container";
 import PosterCard from "@/components/movie/PosterCard";
-import { getWatchlist } from "@/app/actions/watchlist";
-import { auth } from "@/auth";
+import { getUserWatchlistMovies } from "@/app/actions/interactions";
+import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Bookmark, Plus } from "lucide-react";
 
 export default async function WatchlistPage() {
-    const session = await auth();
+    const user = await currentUser();
 
-    if (!session) {
+    if (!user) {
         redirect("/login?callbackUrl=/watchlist");
     }
 
-    const movies = await getWatchlist();
+    const { items: movies } = await getUserWatchlistMovies(100);
 
     return (
         <div className="flex flex-col min-h-screen bg-[#14181c]">
@@ -37,13 +37,8 @@ export default async function WatchlistPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                             {movies.map((movie) => (
                                 <PosterCard
-                                    key={movie.movieId}
-                                    movie={{
-                                        id: movie.movieId,
-                                        title: movie.title,
-                                        poster_path: movie.posterPath,
-                                        vote_average: 0
-                                    } as any}
+                                    key={movie.id}
+                                    movie={movie as any}
                                 />
                             ))}
                         </div>

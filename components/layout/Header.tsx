@@ -1,53 +1,77 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Search as SearchIcon } from 'lucide-react';
 import AuthButton from '@/components/auth/AuthButton';
-import AgentToggle from '@/components/ai/AgentToggle';
-import { auth } from '@/auth';
+import { cn } from "@/lib/utils";
 
-export default async function Header() {
-    const session = await auth();
+export default function Header() {
+    const pathname = usePathname();
+
+    const links = [
+        { name: "FILMS", href: "/" },
+        { name: "DISCOVER", href: "/discover" },
+        { name: "WATCHLIST", href: "/watchlist" },
+        { name: "LISTS", href: "/lists" },
+        { name: "AWARDS", href: "/awards" },
+        { name: "BALLOT", href: "/ballot" },
+    ];
 
     return (
-        <header className="glass sticky top-0 z-50 py-3">
+        <header className="glass sticky top-0 z-50 py-3 border-b border-white/5 bg-nebula-void/80 backdrop-blur-md">
             <div className="container-custom flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-1.5 group">
-                    <div className="flex gap-0.5">
+                <Link href="/" className="flex items-center gap-1.5 group mr-8">
+                    <div className="flex gap-0.5" aria-hidden="true">
                         <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-orange)' }} />
                         <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-brand)' }} />
                         <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-blue)' }} />
                     </div>
-                    <span className="text-2xl font-black text-white ml-2 tracking-tighter italic uppercase">
+                    <span className="text-2xl font-black text-white ml-2 tracking-tighter italic uppercase transform -skew-x-6">
                         ForSeenIt
                     </span>
                 </Link>
 
-                <nav className="hidden md:flex items-center gap-8 ml-10">
-                    <Link href="/" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
-                        Films
-                    </Link>
-                    {session && (
-                        <Link href="/watchlist" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
-                            Watchlist
-                        </Link>
-                    )}
-                    <Link href="/awards" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
-                        Awards
-                    </Link>
-                    <Link
-                        href="/ballot"
-                        className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors relative group"
-                    >
-                        Ballot
-                        <span className="absolute -top-1 -right-1 w-1 h-1 bg-brand rounded-full transition-transform group-hover:scale-150" />
-                    </Link>
-                    <Link href="/search" className="text-[#99aabb] hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors">
-                        Search
-                    </Link>
+                <nav className="hidden md:flex items-center gap-8">
+                    {links.map((link) => {
+                        const isActive = link.href === "/"
+                            ? pathname === "/"
+                            : pathname.startsWith(link.href);
+
+                        return (
+                            <Link
+                                key={link.name}
+                                href={link.href}
+                                className={cn(
+                                    "text-[10px] font-bold tracking-[0.2em] transition-colors uppercase",
+                                    isActive
+                                        ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                                        : "text-[#99aabb] hover:text-white"
+                                )}
+                            >
+                                {link.name}
+                            </Link>
+                        );
+                    })}
                 </nav>
 
                 <div className="flex items-center gap-4 ml-auto">
-                    {/* {session && <AgentToggle />} */}
-                    <AuthButton session={session} />
+                    {/* Search Pill */}
+                    <Link
+                        href="/search"
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full border transition-all",
+                            "bg-[#1b2228]/60 border-white/10 hover:border-[#00e054]/50 hover:bg-[#1b2228]",
+                            "group"
+                        )}
+                    >
+                        <SearchIcon className="w-4 h-4 text-[#99aabb] group-hover:text-[#00e054] transition-colors" />
+                        <span className="hidden md:inline text-[10px] font-bold tracking-[0.15em] text-[#99aabb] group-hover:text-white transition-colors uppercase">
+                            Search
+                        </span>
+                    </Link>
+                    <AuthButton />
                 </div>
             </div>
         </header>

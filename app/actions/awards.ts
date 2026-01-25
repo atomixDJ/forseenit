@@ -1,9 +1,6 @@
 "use server";
 
-import { PrismaClient } from "../../lib/generated/client";
-
-const prisma = new PrismaClient();
-
+import { prisma } from "../../lib/prisma";
 import { CURRENT_SEASON } from "../../lib/constants";
 
 export async function getAwardsData() {

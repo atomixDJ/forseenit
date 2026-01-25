@@ -9,9 +9,10 @@ interface FeedProps {
     title: string;
     movies: Movie[];
     id: string; // Required for local storage persistence
+    activeProviderIds?: number[];
 }
 
-export default function Feed({ title, movies, id }: FeedProps) {
+export default function Feed({ title, movies, id, activeProviderIds = [] }: FeedProps) {
     const [layout, setLayout] = useState<"grid" | "carousel">("grid");
     const scrollRef = useRef<HTMLDivElement>(null);
 

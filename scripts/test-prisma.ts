@@ -9,7 +9,7 @@ async function main() {
         const count = await (prisma as any).awardWinner.count();
         console.log('AwardWinner count:', count);
     } catch (e) {
-        console.error('Failed to access AwardWinner:', e.message);
+        console.error('Failed to access AwardWinner:', (e as any).message);
     }
 }
 

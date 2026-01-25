@@ -1,149 +1,187 @@
 import React from 'react';
 import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
 import Container from "@/components/layout/Container";
+import Footer from "@/components/layout/Footer";
+import { requireAppUserIdPage } from "@/lib/clerk-auth-helpers";
+import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
 import { getUserAnalytics } from "@/app/actions/analytics";
-import { getUserRatedMovies } from "@/app/actions/ratings";
-import { getWatchlist } from "@/app/actions/watchlist";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import StatsCard from "@/components/profile/StatsCard";
-import PosterCard from "@/components/movie/PosterCard";
-import { Film, Bookmark, Star, Clock } from 'lucide-react';
-import Image from 'next/image';
+import StatCard from "@/components/profile/StatCard";
+import RatingDistribution from "@/components/profile/RatingDistribution";
+import SubscriptionManager from "@/components/profile/SubscriptionManager";
+import MovieCollectionGrid from "@/components/profile/MovieCollectionGrid";
+import { getUserSubscriptions } from "@/app/actions/subscriptions";
+import { Clock, Star, Heart, Plus, Eye } from "lucide-react";
+import Image from "next/image";
+import { getTMDBImage } from "@/lib/tmdb";
+import { getUserWatchedMovies, getUserRatedMovies } from "@/app/actions/interactions";
+import PaginatedMovieRail from "@/components/profile/PaginatedMovieRail";
+import TopTen from "@/components/profile/TopTen";
+import { getTopTen } from "@/app/actions/top-ten";
 
 export default async function ProfilePage() {
-    const session = await auth();
-    if (!session) {
-        redirect("/login?callbackUrl=/profile");
-    }
+    const userId = await requireAppUserIdPage(); // Redirects to /login if not authed
+    const user = await currentUser();
 
-    const [data, ratedMovies, watchlist] = await Promise.all([
-        getUserAnalytics(),
-        getUserRatedMovies(),
-        getWatchlist()
+    const analytics = await getUserAnalytics();
+    if (!analytics) return null;
+
+    const { stats, collections } = analytics;
+
+    const [watchedHistory, ratedMovies, subscriptions, topTenMovies] = await Promise.all([
+        getUserWatchedMovies(20),
+        getUserRatedMovies(20),
+        getUserSubscriptions(),
+        getTopTen(userId)
     ]);
 
-    if (!data) return null;
+    // Use the backdrop of the first masterpieces or latest watched as a decorative background
+    const bgMovie = collections.masterpieces[0] || collections.watchlist[0];
+    const bgUrl = bgMovie
+        ? getTMDBImage((bgMovie as any).backdropPath || (bgMovie as any).backdrop_path, 'original')
+        : null;
+
+    // Map WatchlistMovie to match the grid's movie interface
+    const watchlistMovies = collections.watchlist.map(m => ({
+        id: m.movieId,
+        title: m.title,
+        posterPath: m.posterPath,
+        backdropPath: m.backdropPath
+    }));
+
+    const masterpieceMovies = collections.masterpieces.filter((m): m is any => m !== null);
+    const gemMovies = collections.forgottenGems.filter((m): m is any => m !== null);
 
     return (
         <div className="flex flex-col min-h-screen bg-[#14181c]">
             <Header />
 
-            <main className="flex-grow pt-32 pb-20">
+            <div className="relative">
+                {/* Immersive Decorative Backdrop */}
+                {bgUrl && (
+                    <div className="absolute top-0 left-0 w-full h-[60vh] opacity-20 pointer-events-none overflow-hidden">
+                        <Image
+                            src={bgUrl}
+                            alt="Background"
+                            fill
+                            className="object-cover blur-[100px]"
+                            priority
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#14181c]/0 via-[#14181c]/50 to-[#14181c]" />
+                    </div>
+                )}
+
                 <Container>
-                    {/* User Header */}
-                    <header className="flex flex-col md:flex-row items-center gap-8 mb-16">
-                        <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-brand/20 shadow-[0_0_30px_rgba(0,224,84,0.1)]">
-                            <Image
-                                src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || 'U')}&background=1b2228&color=fff`}
-                                alt={session.user?.name || 'User'}
-                                fill
-                                className="object-cover"
+                    <main className="relative z-10 py-12 space-y-16">
+                        {/* Header Section */}
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                            <div className="space-y-4">
+                                <h1 className="text-4xl md:text-6xl font-black text-white italic tracking-tighter uppercase leading-none">
+                                    {user?.firstName || user?.username || "Cinema Lover"}<span className="text-brand">.</span>
+                                </h1>
+                                <p className="text-[#99aabb] uppercase text-[10px] font-bold tracking-[0.4em] max-w-xl">
+                                    Your personal cinema dashboard. Tracking every frame, rating every moment.
+                                </p>
+                            </div>
+                            <Link
+                                href="/settings/import/letterboxd"
+                                className="flex items-center gap-2 px-6 py-3 rounded-[4px] bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all self-start md:self-auto"
+                            >
+                                <Plus className="w-3.5 h-3.5 text-brand" />
+                                <span>Import Letterboxd Data</span>
+                            </Link>
+                        </header>
+
+                        {/* Your Services */}
+                        <SubscriptionManager activeProviderIds={subscriptions.map(s => s.providerId)} />
+
+                        {/* My Top Ten */}
+                        <TopTen initialMovies={topTenMovies} isOwner={true} userId={userId} />
+
+                        {/* Dashboard Section */}
+                        <div>
+                            <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-2">
+                                Your Stats<span className="text-brand">.</span>
+                            </h2>
+                            <p className="text-[#556677] text-[10px] uppercase tracking-[0.2em] font-bold mb-4">
+                                Your cinema journey at a glance
+                            </p>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <StatCard
+                                    label="Total Cinema"
+                                    value={stats.totalHours}
+                                    icon={Clock}
+                                    subtitle="hours watched"
+                                    link="#watched"
+                                    linkText="Full History"
+                                />
+                                <StatCard
+                                    label="Genre Affinity"
+                                    value={stats.favoriteGenre}
+                                    icon={Heart}
+                                    subtitle="top genre"
+                                />
+                                <StatCard
+                                    label="Average Rating"
+                                    value={stats.averageRating}
+                                    icon={Star}
+                                    subtitle="/ 5 stars"
+                                    link="#rated"
+                                    linkText="Your Ratings"
+                                />
+                                {/* Ratings Distribution as 4th card */}
+                                <RatingDistribution
+                                    distribution={analytics.distribution || {}}
+                                    averageRating={stats.averageRating}
+                                    totalWatched={stats.watchedCount}
+                                    totalHours={stats.totalHours}
+                                    totalRated={stats.ratedCount}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Movie Collections */}
+                        <div className="space-y-8">
+                            <MovieCollectionGrid
+                                title="Watchlist"
+                                subtitle="To Watch"
+                                movies={watchlistMovies}
+                            />
+                            <MovieCollectionGrid
+                                title="Masterpieces"
+                                subtitle="5 Star Rated"
+                                movies={masterpieceMovies}
+                            />
+                            <MovieCollectionGrid
+                                title="Forgotten Gems"
+                                subtitle="Your Favorites"
+                                movies={gemMovies}
                             />
                         </div>
-                        <div className="text-center md:text-left">
-                            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter italic uppercase mb-2">
-                                {session.user?.name}
-                            </h1>
-                            <div className="flex items-center justify-center md:justify-start gap-4 text-[#556677] uppercase text-[10px] font-bold tracking-[0.2em]">
-                                <span>Member since {new Date((session.user as any).createdAt || Date.now()).getFullYear()}</span>
-                                <span className="w-1 h-1 rounded-full bg-[#334455]" />
-                                <span>Film Enthusiast</span>
-                            </div>
-                        </div>
-                    </header>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-                        <StatsCard
-                            label="Total Films"
-                            value={data.stats.totalRated}
-                            icon={Film}
-                            subtitle="Watched & Rated"
-                        />
-                        <StatsCard
-                            label="Watchlist"
-                            value={data.stats.watchlistCount}
-                            icon={Bookmark}
-                            subtitle="To be seen"
-                        />
-                        <StatsCard
-                            label="Avg Rating"
-                            value={data.stats.averageRating}
-                            icon={Star}
-                            subtitle="Stars out of 5.0"
-                        />
-                    </div>
-
-                    {/* Watchlist Grid */}
-                    <section className="mb-16">
-                        <div className="flex items-center justify-between mb-8 border-b border-[#334455] pb-2">
-                            <h2 className="text-[#99aabb] uppercase text-[12px] font-bold tracking-[0.2em] flex items-center gap-2">
-                                <Bookmark className="w-4 h-4 text-[#00e054]" />
-                                Your Watchlist
-                            </h2>
-                            <span className="text-[10px] font-bold text-[#556677] uppercase tracking-widest">
-                                {watchlist.length} Films
-                            </span>
+                        {/* Full Lists (Newest First) */}
+                        <div id="watched" className="pt-20">
+                            <PaginatedMovieRail
+                                title="Watched History"
+                                subtitle="All Time"
+                                initialMovies={watchedHistory.items}
+                                initialNextCursor={watchedHistory.nextCursor}
+                                fetchAction={getUserWatchedMovies}
+                            />
                         </div>
 
-                        {watchlist.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                                {watchlist.map((m) => (
-                                    <PosterCard
-                                        key={m.id}
-                                        movie={{
-                                            id: m.movieId,
-                                            title: m.title,
-                                            poster_path: m.posterPath,
-                                            vote_average: 0,
-                                            release_date: ""
-                                        } as any}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-[#1b2228]/40 border border-dashed border-white/10 rounded-lg py-20 text-center">
-                                <Bookmark className="w-12 h-12 text-[#334455] mx-auto mb-4 opacity-20" />
-                                <p className="text-[#556677] font-medium italic">Your watchlist is empty.</p>
-                                <p className="text-[#334455] text-xs mt-2 uppercase tracking-widest">Add films to keep track of what you want to see</p>
-                            </div>
-                        )}
-                    </section>
-
-                    {/* Rated Movies Grid */}
-                    <section>
-                        <div className="flex items-center justify-between mb-8 border-b border-[#334455] pb-2">
-                            <h2 className="text-[#99aabb] uppercase text-[12px] font-bold tracking-[0.2em] flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-[#00e054]" />
-                                Recently Rated
-                            </h2>
-                            <span className="text-[10px] font-bold text-[#556677] uppercase tracking-widest">
-                                {ratedMovies.length} Films
-                            </span>
+                        <div id="rated" className="pt-20">
+                            <PaginatedMovieRail
+                                title="Your Ratings"
+                                subtitle="Star Ranked"
+                                initialMovies={ratedMovies.items}
+                                initialNextCursor={ratedMovies.nextCursor}
+                                fetchAction={getUserRatedMovies}
+                            />
                         </div>
-
-                        {ratedMovies.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                                {ratedMovies.map((movie) => (
-                                    <PosterCard
-                                        key={movie.id}
-                                        movie={movie}
-                                        userRating={movie.userRating}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-[#1b2228]/40 border border-dashed border-white/10 rounded-lg py-20 text-center">
-                                <Star className="w-12 h-12 text-[#334455] mx-auto mb-4 opacity-20" />
-                                <p className="text-[#556677] font-medium italic">You haven't rated any films yet.</p>
-                                <p className="text-[#334455] text-xs mt-2 uppercase tracking-widest">Start exploring to build your profile</p>
-                            </div>
-                        )}
-                    </section>
+                    </main>
                 </Container>
-            </main>
+            </div>
 
             <Footer />
         </div>

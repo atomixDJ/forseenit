@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { requireAppUserIdAction } from "@/lib/clerk-auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -8,12 +8,12 @@ import { revalidatePath } from "next/cache";
  * Submit or update a user's pick for a specific category.
  */
 export async function submitPick(eventYear: number, category: string, nomineeId: string, nomineeName: string) {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const authResult = await requireAppUserIdAction();
+    if (!authResult.ok) {
         return { error: "Unauthorized" };
     }
 
-    const userId = session.user.id;
+    const userId = authResult.userId;
 
     try {
         const pick = await prisma.ballot.upsert({
@@ -49,12 +49,12 @@ export async function submitPick(eventYear: number, category: string, nomineeId:
  * Get all picks for a user for a specific year.
  */
 export async function getUserPicks(year: number) {
-    const session = await auth();
-    if (!session?.user?.id) return [];
+    const authResult = await requireAppUserIdAction();
+    if (!authResult.ok) return [];
 
     const picks = await prisma.ballot.findMany({
         where: {
-            userId: session.user.id,
+            userId: authResult.userId,
             eventYear: year,
         },
     });
