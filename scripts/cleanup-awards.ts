@@ -1,6 +1,4 @@
-import { PrismaClient } from '../lib/generated/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 async function main() {
     console.log('Starting invariant cleanup...');

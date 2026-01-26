@@ -1,6 +1,6 @@
 "use client";
 
-import { Search as SearchIcon, Loader2, Film, Calendar, Star, X as XIcon } from "lucide-react";
+import { Search as SearchIcon, Loader2, Film, Calendar, Star, X as XIcon, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -27,6 +27,16 @@ interface Genre {
     id: number;
     name: string;
 }
+
+interface UserResult {
+    id: string;
+    handle: string;
+    name: string | null;
+    image: string | null;
+    followerCount: number;
+}
+
+type SearchTab = "movies" | "people";
 
 const DECADES = ["2020s", "2010s", "2000s", "1990s", "1980s", "Classic"];
 
@@ -77,6 +87,11 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
     // Dynamic genres from TMDB
     const [genres, setGenres] = useState<Genre[]>([]);
     const [genresLoading, setGenresLoading] = useState(true);
+
+    // Tab state for Movies/People toggle
+    const [searchTab, setSearchTab] = useState<SearchTab>("movies");
+    const [userResults, setUserResults] = useState<UserResult[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
     // Ref to track latest request to ignore stale responses
     const latestRequestRef = useRef<number>(0);
@@ -163,9 +178,30 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
         }
     }, []);
 
+    // Fetch users function for people search
+    const fetchUsers = useCallback(async (query: string) => {
+        if (!query.trim()) {
+            setUserResults([]);
+            return;
+        }
 
+        setIsLoadingUsers(true);
 
-    // Debounced URL update + fetch
+        try {
+            const res = await fetch(`/api/user-search?q=${encodeURIComponent(query)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setUserResults(data.results || []);
+            }
+        } catch (err) {
+            console.error("User search failed:", err);
+            setUserResults([]);
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    }, []);
+
+    // Debounced URL update + fetch (handles both tabs)
     const debouncedSearch = useDebouncedCallback((term: string) => {
         const params = new URLSearchParams(searchParams);
         if (term.trim()) {
@@ -174,8 +210,26 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
             params.delete("q");
         }
         router.replace(`/search?${params.toString()}`);
-        fetchMovies(term);
+
+        // Fetch based on current tab
+        if (searchTab === "movies") {
+            fetchMovies(term);
+        } else {
+            fetchUsers(term);
+        }
     }, 250);
+
+    // Re-fetch when tab changes with existing query
+    useEffect(() => {
+        if (inputValue.trim()) {
+            if (searchTab === "movies") {
+                fetchMovies(inputValue);
+            } else {
+                fetchUsers(inputValue);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTab]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -260,6 +314,16 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
         }
     };
 
+    // Handle user click - navigate to public profile by handle
+    const handleUserClick = (handle: string) => {
+        if (onMovieSelect) {
+            onMovieSelect();
+            setTimeout(() => router.push(`/u/${handle}`), 10);
+        } else {
+            router.push(`/u/${handle}`);
+        }
+    };
+
     return (
         <div className="p-6">
             {/* Search Input */}
@@ -270,160 +334,257 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
                 <input
                     ref={inputRef}
                     type="text"
-                    placeholder="Search movies..."
+                    placeholder={searchTab === "movies" ? "Search movies..." : "Search people..."}
                     value={inputValue}
                     onChange={handleInputChange}
                     className="w-full bg-[#1b2228] border border-white/10 rounded-full py-3 pl-12 pr-4 text-white placeholder:text-[#556677] focus:ring-2 focus:ring-[#00e054]/30 focus:border-[#00e054]/50 transition-all"
                 />
             </div>
 
-            {/* Filters Section */}
-            <div className="mb-6 space-y-4">
-                {/* Genre Filters */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                        <Film className="w-3 h-3" />
-                        <span>Genre</span>
+            {/* Movies / People Toggle */}
+            <div className="flex gap-2 mb-4">
+                <button
+                    onClick={() => setSearchTab("movies")}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${searchTab === "movies"
+                        ? "bg-brand text-black"
+                        : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
+                        }`}
+                >
+                    <Film className="w-3.5 h-3.5" />
+                    Movies
+                </button>
+                <button
+                    onClick={() => setSearchTab("people")}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${searchTab === "people"
+                        ? "bg-brand text-black"
+                        : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
+                        }`}
+                >
+                    <Users className="w-3.5 h-3.5" />
+                    People
+                </button>
+            </div>
+
+            {/* Filters Section - Only for Movies */}
+            {searchTab === "movies" && (
+                <div className="mb-6 space-y-4">
+                    {/* Genre Filters */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
+                            <Film className="w-3 h-3" />
+                            <span>Genre</span>
+                        </div>
+                        {genresLoading ? (
+                            <span className="text-[10px] text-[#556677] italic">Loading...</span>
+                        ) : (
+                            genres.map((genre) => (
+                                <button
+                                    key={genre.id}
+                                    onClick={() => toggleGenre(genre.id)}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedGenres.includes(genre.id)
+                                        ? "bg-[#00e054] text-black"
+                                        : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
+                                        }`}
+                                >
+                                    {genre.name}
+                                </button>
+                            ))
+                        )}
                     </div>
-                    {genresLoading ? (
-                        <span className="text-[10px] text-[#556677] italic">Loading...</span>
-                    ) : (
-                        genres.map((genre) => (
+
+                    {/* Decade Filters */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>Decade</span>
+                        </div>
+                        {DECADES.map((decade) => (
                             <button
-                                key={genre.id}
-                                onClick={() => toggleGenre(genre.id)}
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedGenres.includes(genre.id)
-                                    ? "bg-[#00e054] text-black"
+                                key={decade}
+                                onClick={() => setSelectedDecade(selectedDecade === decade ? null : decade)}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedDecade === decade
+                                    ? "bg-[#ff8000] text-black"
                                     : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
                                     }`}
                             >
-                                {genre.name}
+                                {decade}
                             </button>
-                        ))
-                    )}
-                </div>
-
-                {/* Decade Filters */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>Decade</span>
+                        ))}
                     </div>
-                    {DECADES.map((decade) => (
-                        <button
-                            key={decade}
-                            onClick={() => setSelectedDecade(selectedDecade === decade ? null : decade)}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedDecade === decade
-                                ? "bg-[#ff8000] text-black"
-                                : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
-                                }`}
-                        >
-                            {decade}
-                        </button>
-                    ))}
-                </div>
 
-                {/* Rating Filters */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                        <Star className="w-3 h-3" />
-                        <span>Rating</span>
-                    </div>
-                    {RATINGS.map((rating) => (
-                        <button
-                            key={rating}
-                            onClick={() => setSelectedRating(selectedRating === rating ? null : rating)}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedRating === rating
-                                ? "bg-[#40bcf4] text-black"
-                                : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
-                                }`}
-                        >
-                            {rating}
-                        </button>
-                    ))}
-
-                    {/* Clear Filters Button */}
-                    {hasActiveFilters && (
-                        <button
-                            onClick={clearFilters}
-                            className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-                        >
-                            <XIcon className="w-3 h-3" />
-                            Clear
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* States */}
-            {isLoading && (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 text-[#00e054] animate-spin" />
-                </div>
-            )}
-
-            {error && (
-                <div className="text-center py-12 text-red-400">
-                    {error}
-                </div>
-            )}
-
-            {!isLoading && !error && !hasSearched && (
-                <div className="text-center py-8 text-[#556677] italic">
-                    Start typing to search movies...
-                </div>
-            )}
-
-            {!isLoading && !error && hasSearched && results.length === 0 && (
-                <div className="text-center py-12 text-[#99aabb]">
-                    No movies found. Try a different search term.
-                </div>
-            )}
-
-            {!isLoading && !error && hasSearched && results.length > 0 && filteredResults.length === 0 && (
-                <div className="text-center py-12 text-[#99aabb]">
-                    No movies match your filters. Try adjusting your filter criteria.
-                </div>
-            )}
-
-            {/* Results Grid */}
-            {!isLoading && !error && filteredResults.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                    {filteredResults.slice(0, 15).map((movie) => (
-                        <div
-                            key={movie.id}
-                            onClick={() => handleMovieClick(movie.id)}
-                            className="group block cursor-pointer"
-                        >
-                            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-[#1b2228] relative">
-                                {movie.poster_path ? (
-                                    <Image
-                                        src={getTmdbImage(movie.poster_path)!}
-                                        alt={movie.title}
-                                        fill
-                                        sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
-                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                ) : (
-                                    <div className="absolute inset-0 flex items-center justify-center text-[#556677] text-xs text-center p-2">
-                                        {movie.title}
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-xs text-white font-medium truncate group-hover:text-[#00e054] transition-colors">
-                                    {movie.title}
-                                </p>
-                                {movie.release_date && (
-                                    <p className="text-[10px] text-[#556677]">
-                                        {movie.release_date.slice(0, 4)}
-                                    </p>
-                                )}
-                            </div>
+                    {/* Rating Filters */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
+                            <Star className="w-3 h-3" />
+                            <span>Rating</span>
                         </div>
-                    ))}
+                        {RATINGS.map((rating) => (
+                            <button
+                                key={rating}
+                                onClick={() => setSelectedRating(selectedRating === rating ? null : rating)}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedRating === rating
+                                    ? "bg-[#40bcf4] text-black"
+                                    : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
+                                    }`}
+                            >
+                                {rating}
+                            </button>
+                        ))}
+
+                        {/* Clear Filters Button */}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearFilters}
+                                className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                            >
+                                <XIcon className="w-3 h-3" />
+                                Clear
+                            </button>
+                        )}
+                    </div>
                 </div>
+            )}
+
+            {/* MOVIES TAB CONTENT */}
+            {searchTab === "movies" && (
+                <>
+                    {/* States */}
+                    {isLoading && (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 text-[#00e054] animate-spin" />
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="text-center py-12 text-red-400">
+                            {error}
+                        </div>
+                    )}
+
+                    {!isLoading && !error && !hasSearched && (
+                        <div className="text-center py-8 text-[#556677] italic">
+                            Start typing to search movies...
+                        </div>
+                    )}
+
+                    {!isLoading && !error && hasSearched && results.length === 0 && (
+                        <div className="text-center py-12 text-[#99aabb]">
+                            No movies found. Try a different search term.
+                        </div>
+                    )}
+
+                    {!isLoading && !error && hasSearched && results.length > 0 && filteredResults.length === 0 && (
+                        <div className="text-center py-12 text-[#99aabb]">
+                            No movies match your filters. Try adjusting your filter criteria.
+                        </div>
+                    )}
+
+                    {/* Results Grid */}
+                    {!isLoading && !error && filteredResults.length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                            {filteredResults.slice(0, 15).map((movie) => (
+                                <div
+                                    key={movie.id}
+                                    onClick={() => handleMovieClick(movie.id)}
+                                    className="group block cursor-pointer"
+                                >
+                                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-[#1b2228] relative">
+                                        {movie.poster_path ? (
+                                            <Image
+                                                src={getTmdbImage(movie.poster_path)!}
+                                                alt={movie.title}
+                                                fill
+                                                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
+                                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 flex items-center justify-center text-[#556677] text-xs text-center p-2">
+                                                {movie.title}
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                    <div className="mt-2">
+                                        <p className="text-xs text-white font-medium truncate group-hover:text-[#00e054] transition-colors">
+                                            {movie.title}
+                                        </p>
+                                        {movie.release_date && (
+                                            <p className="text-[10px] text-[#556677]">
+                                                {movie.release_date.slice(0, 4)}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* PEOPLE TAB CONTENT */}
+            {searchTab === "people" && (
+                <>
+                    {/* Loading */}
+                    {isLoadingUsers && (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 text-[#00e054] animate-spin" />
+                        </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!isLoadingUsers && !inputValue.trim() && (
+                        <div className="text-center py-8 text-[#556677] italic">
+                            Start typing to find people...
+                        </div>
+                    )}
+
+                    {/* No results */}
+                    {!isLoadingUsers && inputValue.trim() && userResults.length === 0 && (
+                        <div className="text-center py-12 text-[#99aabb]">
+                            No people found. Try a different search term.
+                        </div>
+                    )}
+
+                    {/* People Results Grid */}
+                    {!isLoadingUsers && userResults.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {userResults.map((user) => (
+                                <div
+                                    key={user.id}
+                                    onClick={() => handleUserClick(user.handle)}
+                                    className="group block cursor-pointer"
+                                >
+                                    <div className="flex flex-col items-center p-4 rounded-lg bg-[#1b2228] hover:bg-[#2a3440] transition-colors border border-white/5">
+                                        {/* Avatar */}
+                                        <div className="w-16 h-16 rounded-full overflow-hidden bg-[#2a3440] mb-3">
+                                            {user.image ? (
+                                                <Image
+                                                    src={user.image}
+                                                    alt={`@${user.handle}`}
+                                                    width={64}
+                                                    height={64}
+                                                    className="object-cover w-full h-full"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-xl font-black text-[#556677]">
+                                                    {user.handle.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Handle */}
+                                        <p className="text-sm text-white font-medium truncate w-full text-center group-hover:text-brand transition-colors">
+                                            @{user.handle}
+                                        </p>
+                                        {/* Follower count */}
+                                        <p className="text-[10px] text-[#556677] mt-1">
+                                            {user.followerCount} followers
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

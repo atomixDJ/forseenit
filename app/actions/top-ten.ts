@@ -29,9 +29,17 @@ export async function getTopTen(targetUserId: string) {
 
     const movieMap = new Map(movies.map(m => [m.tmdbId, m]));
 
+    // Fetch User Ratings for these movies
+    const ratings = await prisma.movieInteraction.findMany({
+        where: { userId: targetUserId, movieId: { in: tmdbIds } },
+        select: { movieId: true, ratingHalf: true }
+    });
+    const ratingMap = new Map(ratings.map(r => [r.movieId, r.ratingHalf]));
+
     return topTen.map(item => ({
         ...item,
-        movie: movieMap.get(item.tmdbId) || null
+        movie: movieMap.get(item.tmdbId) || null,
+        ratingHalf: ratingMap.get(item.tmdbId) || null
     }));
 }
 
@@ -75,12 +83,14 @@ export async function addToTopTen(tmdbId: number) {
                         title: movieDetails.title,
                         posterPath: movieDetails.poster_path,
                         backdropPath: movieDetails.backdrop_path,
+                        genreIds: movieDetails.genre_ids?.join(',')
                     },
                     create: {
                         tmdbId: movieDetails.id,
                         title: movieDetails.title,
                         posterPath: movieDetails.poster_path,
                         backdropPath: movieDetails.backdrop_path,
+                        genreIds: movieDetails.genre_ids?.join(',')
                     }
                 });
             }

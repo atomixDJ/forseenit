@@ -5,6 +5,7 @@ import { getNowPlaying, getTrendingMovies } from "@/lib/tmdb";
 import { getUserSeenMovieIds } from "@/app/actions/interactions";
 import { currentUser } from "@clerk/nextjs/server";
 import Feed from "@/components/movie/Feed";
+import TonightRail from "@/components/home/TonightRail";
 
 // Dynamic greetings based on time of day
 function getTimeBasedGreeting(): { greeting: string; context: string } {
@@ -33,26 +34,11 @@ export default async function Home() {
   const seenSet = new Set(seenIds);
 
   // Filter movies that have NOT been seen
-  const filteredTrending = trending.results.filter(
-    (m: any) => !seenSet.has(m.id)
-  );
-  const filteredPopular = nowPlaying.results.filter(
-    (m: any) => !seenSet.has(m.id)
-  );
+  const filteredTrending = trending.results.filter((m: any) => !seenSet.has(m.id));
+  const filteredPopular = nowPlaying.results.filter((m: any) => !seenSet.has(m.id));
 
-  // Personalized Streaming Row (if subscriptions exist)
-  let streamingForYou: any[] = [];
-  const activeProviderIds = subscriptions.map(s => s.providerId).join("|");
-
-  if (activeProviderIds) {
-    const streamResult = await import("@/lib/tmdb").then(m => m.discoverMovies({
-      with_watch_providers: activeProviderIds,
-      watch_region: 'US',
-      with_watch_monetization_types: 'flatrate',
-      sort_by: 'popularity.desc'
-    }));
-    streamingForYou = streamResult.results.filter((m: any) => !seenSet.has(m.id));
-  }
+  // Personalized Tonight recommendations
+  const tonight = await import("@/app/actions/recommendations").then(m => m.getTonightRecommendations());
 
   const { greeting, context } = getTimeBasedGreeting();
   const firstName = user?.firstName || user?.username || null;
@@ -77,10 +63,10 @@ export default async function Home() {
             </h1>
           </section>
 
-          {streamingForYou.length > 0 && (
-            <Feed id="streaming-for-you" title="Streaming for You" movies={streamingForYou} />
-          )}
+          {/* Tonight Rail */}
+          <TonightRail result={tonight} />
 
+          {/* Existing feeds */}
           <Feed id="trending" title="Trending This Week" movies={filteredTrending} />
           <Feed id="popular" title="Popular This Week" movies={filteredPopular} />
         </main>

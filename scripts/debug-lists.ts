@@ -1,16 +1,4 @@
-import { PrismaClient } from '../lib/generated/client';
-import path from 'path';
-
-const dbPath = path.resolve(process.cwd(), 'prisma/dev.db');
-console.log(`Debug DB URL: file:${dbPath}`);
-
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: `file:${dbPath}`
-        }
-    }
-});
+import { prisma } from '../lib/prisma';
 
 async function main() {
     console.log("Checking System Lists...");
@@ -27,7 +15,7 @@ async function main() {
     for (const list of lists) {
         console.log(`\nList: ${list.title} (${list.items.length} items)`);
         for (const item of list.items) {
-            console.log(`  - [${item.position}] DB Title: "${item.movie.title}" (ID: ${item.movie.tmdbId})`);
+            console.log(`  - [${item.position}] DB Title: "${item.movie?.title ?? 'N/A'}" (ID: ${item.movie?.tmdbId ?? 'N/A'})`);
         }
     }
 }

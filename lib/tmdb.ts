@@ -1,7 +1,9 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const API_KEY = process.env.TMDB_API_KEY;
 
-type TMDBImageSize = 'w300' | 'w500' | 'w780' | 'w1280' | 'original';
+import { prisma } from './prisma';
+
+type TMDBImageSize = 'w92' | 'w300' | 'w500' | 'w780' | 'w1280' | 'original';
 
 export function getTMDBImage(path: string | null, size: TMDBImageSize = 'w780') {
     if (!path) return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9Ijc1MCIgdmlld0JveD0iMCAwIDUwMCA3NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwMCIgaGVpZ2h0PSI3NTAiIGZpbGw9IiMxYTIyMjgiLz48cGF0aCBkPSJNMjUwIDMwMExDMjUwIDMwMCAyMjUgMzUwIDIwMCAzNTBDMTc1IDM1MCAxNzUgMzAwIDE3NSAzMDBMMjUwIDMwMFoiIGZpbGw9IiMzMzQ0NTUiLz48L3N2Zz4='; // Dark slate premium placeholder
@@ -240,8 +242,27 @@ export async function resolveMovieId(
 
         // Check for exact normalized matches in Tier 1
         const t1Exact = tier1.results.filter(m => normalizeTitle(m.title) === normalizedOriginal);
-        if (t1Exact.length === 1) return { id: t1Exact[0].id, isAmbiguous: false };
-        if (t1Exact.length > 1) return { id: t1Exact[0].id, isAmbiguous: true }; // remakes/collisions in same year
+        if (t1Exact.length >= 1) {
+            const match = t1Exact[0];
+            // Sync to local DB
+            await prisma.movie.upsert({
+                where: { tmdbId: match.id },
+                update: {
+                    title: match.title,
+                    posterPath: match.poster_path,
+                    backdropPath: match.backdrop_path,
+                    genreIds: match.genre_ids?.join(',')
+                },
+                create: {
+                    tmdbId: match.id,
+                    title: match.title,
+                    posterPath: match.poster_path,
+                    backdropPath: match.backdrop_path,
+                    genreIds: match.genre_ids?.join(',')
+                }
+            });
+            return { id: match.id, isAmbiguous: t1Exact.length > 1 };
+        }
 
         // TIER 2: Search Title Only (Fallback for festival/release year drift)
         // If Tier 1 fails, the year provided might be off by ±1 (common in imports).

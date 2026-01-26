@@ -88,10 +88,10 @@ export default function PaginatedMovieRail({
 
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                             <div className="flex items-center gap-1">
-                                <Star className="w-3 h-3 fill-brand text-brand" />
                                 <span className="text-[10px] font-black text-white tracking-widest uppercase font-mono">
                                     {movie.rating ? (movie.rating * 1).toFixed(1) : 'NR'}
                                 </span>
+                                <Star className="w-3 h-3 fill-brand text-brand" />
                             </div>
                         </div>
                     </Link>

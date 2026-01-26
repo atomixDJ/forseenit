@@ -14,6 +14,7 @@ interface PosterCardProps {
     userRating?: number | null;
     isAvailable?: boolean;
     className?: string;
+    hideRatingUntilHover?: boolean;
 }
 
 export default function PosterCard({
@@ -24,7 +25,8 @@ export default function PosterCard({
     noLink = false,
     userRating,
     isAvailable = false,
-    className = ""
+    className = "",
+    hideRatingUntilHover = false
 }: PosterCardProps) {
     // TMDB Trending movies don't have runtime or status in the list view data usually
     // but the getMovieDetails does.
@@ -55,9 +57,9 @@ export default function PosterCard({
                     </div>
                 )}
                 {userRating && (
-                    <div className="bg-brand text-black text-[9px] font-black px-1.5 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5">
-                        <Star className="w-2 h-2 fill-black" strokeWidth={3} />
+                    <div className={`bg-brand text-black text-[9px] font-black px-1.5 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5 transition-opacity ${hideRatingUntilHover ? 'opacity-0 group-hover:opacity-100' : ''}`}>
                         <span>{userRating.toFixed(1)}</span>
+                        <Star className="w-2 h-2 fill-black" strokeWidth={3} />
                     </div>
                 )}
                 {isAvailable && (
@@ -70,8 +72,8 @@ export default function PosterCard({
             {/* Rating Badge */}
             {movie.vote_average > 0 && (
                 <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded-[2px] border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Star className="h-2 w-2 fill-brand text-brand" />
                     <span className="text-[9px] font-bold text-white">{(movie.vote_average).toFixed(1)}</span>
+                    <Star className="h-2 w-2 fill-brand text-brand" />
                 </div>
             )}
 

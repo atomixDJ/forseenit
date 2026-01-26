@@ -5,12 +5,12 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/client"
 }
 
 model User {
   id            String          @id @default(cuid())
   clerkId       String?         @unique  // Clerk identity mapping
+  handle        String          @unique  // URL-safe handle (from Clerk username or fallback)
   name          String?
   email         String?         @unique
   emailVerified DateTime?
@@ -31,6 +31,12 @@ model User {
   subscriptions StreamingSubscription[]
   importRuns    ImportRun[]
   topTen        UserTopTen[]
+  
+  // Social - Follow relationships
+  // followers: Follow rows where THIS user is the target (followingId)
+  // following: Follow rows where THIS user is the source (followerId)
+  followers     Follow[] @relation("UserFollowers")
+  following     Follow[] @relation("UserFollowing")
   
   // Auth Bootstrap
   settings        UserSettings?
@@ -308,6 +314,7 @@ model Movie {
   title           String
   posterPath      String?
   backdropPath    String?
+  genreIds        String?   // comma-separated TMDB IDs
   
   // Award Specifics (Optional for general movies)
   eligibleDate    DateTime?
@@ -353,13 +360,15 @@ model StreamingSubscription {
 }
 
 model UserSettings {
-  userId       String   @id
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  providerMode String   @default("ALL") // "ALL" | "MY_SERVICES", validated in actions
-  region       String?  // 2-letter uppercase, validated at write-time
-  runtimeMin   Int?
-  runtimeMax   Int?     // Enforce runtimeMin <= runtimeMax in actions
-  updatedAt    DateTime @updatedAt
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerMode        String   @default("ALL") // "ALL" | "MY_SERVICES", validated in actions
+  region              String?  // 2-letter uppercase, validated at write-time
+  runtimeMin          Int?
+  runtimeMax          Int?     // Enforce runtimeMin <= runtimeMax in actions
+  showFollowersPublic Boolean  @default(true)  // Privacy: allow public to view followers list
+  showFollowingPublic Boolean  @default(true)  // Privacy: allow public to view following list
+  updatedAt           DateTime @updatedAt
 }
 
 model OnboardingState {
@@ -391,4 +400,19 @@ model UserTopTen {
   @@unique([userId, tmdbId])
   @@unique([userId, position]) // Prevent duplicates at same position
   @@index([userId])
+}
+
+// Social: Follow relationships
+// Each row represents: follower -> following (follower follows following)
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }

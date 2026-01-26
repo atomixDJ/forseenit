@@ -13,6 +13,7 @@ import { getMovieTrailer } from "@/lib/tmdb/getMovieTrailer";
 import TrailerInline from "@/components/movie/TrailerInline";
 import InteractionButtons from "@/components/movie/InteractionButtons";
 import ReviewSection from "@/components/movie/ReviewSection";
+import MovieRaters from "@/components/movie/MovieRaters";
 import { Star, Clock, Play, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma"; // Direct access for fallback
@@ -246,6 +247,9 @@ export default async function MoviePage({
 
                                 {/* Reviews Section */}
                                 <ReviewSection movieId={movieId} />
+
+                                {/* People who rated this */}
+                                <MovieRaters tmdbId={movieId} isLoggedIn={!!user} />
                             </div>
                         </div>
 

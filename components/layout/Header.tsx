@@ -11,7 +11,8 @@ export default function Header() {
     const pathname = usePathname();
 
     const links = [
-        { name: "FILMS", href: "/" },
+        { name: "WATCH", href: "/" },
+        { name: "COMPARE", href: "/compare" },
         { name: "DISCOVER", href: "/discover" },
         { name: "WATCHLIST", href: "/watchlist" },
         { name: "LISTS", href: "/lists" },

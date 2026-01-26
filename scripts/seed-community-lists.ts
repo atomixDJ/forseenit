@@ -1,5 +1,5 @@
 
-import { PrismaClient } from '../lib/generated/client';
+import { prisma } from '../lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
@@ -33,17 +33,6 @@ const env = loadEnv();
 // Populate process.env so PrismaClient can find DATABASE_URL if needed
 Object.assign(process.env, env);
 
-// Robustly resolve the database file path
-const dbPath = path.resolve(process.cwd(), 'prisma/dev.db');
-const dbUrl = `file:${dbPath}`;
-
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: dbUrl
-        }
-    }
-});
 const TMDB_API_KEY = env.TMDB_API_KEY;
 const SYSTEM_USER_EMAIL = "community@forseenit.com";
 
@@ -215,6 +204,7 @@ async function main() {
         systemUser = await prisma.user.create({
             data: {
                 email: SYSTEM_USER_EMAIL,
+                handle: "foreseen",
                 name: "Foreseen Collection",
                 image: "/images/logo.png"
             }

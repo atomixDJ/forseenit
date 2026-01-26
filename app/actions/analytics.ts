@@ -2,6 +2,7 @@
 
 import { requireAppUserIdAction } from "@/lib/clerk-auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { getTopGenre } from "@/lib/movie/genres";
 
 export async function getUserAnalytics() {
     const authResult = await requireAppUserIdAction();
@@ -16,7 +17,8 @@ export async function getUserAnalytics() {
                 select: {
                     title: true,
                     posterPath: true,
-                    backdropPath: true
+                    backdropPath: true,
+                    genreIds: true
                 }
             }
         }
@@ -42,12 +44,16 @@ export async function getUserAnalytics() {
         distribution[i] = ratings.filter(r => (r.ratingHalf! / 2) === i).length;
     }
 
+    // Compute top genre from all rated movies using canonical logic
+    const genreIdLists = ratings.map(r => r.movie?.genreIds || null);
+    const favoriteGenre = getTopGenre(genreIdLists) || "—";
+
     const collectionsCount = 10;
 
     return {
         stats: {
             totalHours,
-            favoriteGenre: "Mixed", // Will need genres in DB for this to be fast
+            favoriteGenre,
             averageRating: Number(averageRating.toFixed(1)),
             watchlistCount: watchlist.length,
             watchedCount: totalWatched,

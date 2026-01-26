@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getTMDBImage } from "@/lib/tmdb";
+import { Star } from "lucide-react";
 import {
     DndContext,
     closestCenter,
@@ -34,6 +36,7 @@ type TopTenItem = {
         title: string;
         posterPath: string | null;
     } | null;
+    ratingHalf: number | null;
 };
 
 type Props = {
@@ -64,6 +67,7 @@ function SortableMovie({ item, isEditing }: { item: TopTenItem; isEditing: boole
     };
 
     const movie = item.movie || { title: `Unknown (${item.tmdbId})`, posterPath: null };
+    const rating = item.ratingHalf ? item.ratingHalf / 2 : null;
 
     return (
         <div
@@ -83,6 +87,14 @@ function SortableMovie({ item, isEditing }: { item: TopTenItem; isEditing: boole
             ) : (
                 <div className="w-full h-full flex items-center justify-center p-2 text-center text-xs text-[#556677] font-bold uppercase tracking-wider broke-words">
                     {movie.title}
+                </div>
+            )}
+
+            {/* Rating Badge */}
+            {rating && (
+                <div className="absolute top-1 left-1 bg-brand text-black text-[8px] font-black px-1 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5 z-20">
+                    <span>{rating.toFixed(1)}</span>
+                    <Star className="w-2 h-2 fill-black" strokeWidth={3} />
                 </div>
             )}
 

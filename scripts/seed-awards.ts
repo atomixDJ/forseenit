@@ -1,4 +1,4 @@
-import { PrismaClient } from '../lib/generated/client';
+import { prisma } from '../lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,7 +26,6 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const prisma = new PrismaClient();
 const TMDB_API_KEY = env.TMDB_API_KEY;
 
 const CURRENT_SEASON = "2025_2026";
@@ -54,7 +53,7 @@ const MANUAL_OVERRIDE: Record<string, number> = {
     "Frankenstein": 1062722, // Guillermo del Toro
     "Sentimental Value": 1124566, // Joachim Trier
     "F1": 911430,             // Joseph Kosinski
-    // Note: "Bugonia" and "Sinners" are not yet in TMDb as of Jan 2026
+    "Sinners": 1293874,      // Ryan Coogler
 };
 
 /**
@@ -308,7 +307,7 @@ async function main() {
     await prisma.awardWinner.deleteMany({});
     await prisma.awardSeason.deleteMany({});
     await prisma.awardEvent.deleteMany({});
-    await prisma.movie.deleteMany({});
+    // await prisma.movie.deleteMany({}); // Keep generic movies to avoid FK violations with User interactions
 
     console.log('Starting seed...');
 
