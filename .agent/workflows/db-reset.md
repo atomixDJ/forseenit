@@ -16,10 +16,12 @@ npx prisma generate
 npx tsx scripts/seed-awards.ts
 ```
 
-## 3. Seed Community Lists
+## 3. Seed Community Lists (Curated Collections)
 ```bash
 npx tsx scripts/seed-community-lists.ts
 ```
+
+> **Creates:** Best of 2024, Sight & Sound Top 10, Essential Sci-Fi, Modern Horror Classics, Animation Beyond Boundaries (10 items each)
 
 ## 4. Backfill Genre IDs (Required for Genre Affinity)
 ```bash
