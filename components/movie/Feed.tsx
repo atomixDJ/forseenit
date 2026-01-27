@@ -1,19 +1,25 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { Movie } from "@/lib/tmdb";
 import PosterCard from "./PosterCard";
-import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Loader2 } from "lucide-react";
+import { loadMoreMovies } from "@/app/actions/feed";
 
 interface FeedProps {
     title: string;
     movies: Movie[];
-    id: string; // Required for local storage persistence
+    id: string; // Required for local storage persistence and pagination
     activeProviderIds?: number[];
 }
 
-export default function Feed({ title, movies, id, activeProviderIds = [] }: FeedProps) {
+export default function Feed({ title, movies: initialMovies, id, activeProviderIds = [] }: FeedProps) {
     const [layout, setLayout] = useState<"grid" | "carousel">("grid");
+    const [movies, setMovies] = useState(initialMovies);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -22,6 +28,13 @@ export default function Feed({ title, movies, id, activeProviderIds = [] }: Feed
             setLayout(saved);
         }
     }, [id]);
+
+    // Update movies when initialMovies changes (e.g., from server refresh)
+    useEffect(() => {
+        setMovies(initialMovies);
+        setPage(1);
+        setHasMore(true);
+    }, [initialMovies]);
 
     const toggleLayout = () => {
         const next = layout === "grid" ? "carousel" : "grid";
@@ -40,6 +53,28 @@ export default function Feed({ title, movies, id, activeProviderIds = [] }: Feed
         }
     };
 
+
+    const handleLoadMore = () => {
+        setError(null);
+        startTransition(async () => {
+            const nextPage = page + 1;
+            const result = await loadMoreMovies(id, nextPage);
+
+            if (result.error) {
+                setError(result.error);
+                return;
+            }
+
+            // Append new movies, avoiding duplicates
+            const existingIds = new Set(movies.map(m => m.id));
+            const newMovies = result.movies.filter(m => !existingIds.has(m.id));
+
+            setMovies(prev => [...prev, ...newMovies]);
+            setPage(nextPage);
+            setHasMore(result.hasMore);
+        });
+    };
+
     if (!movies || movies.length === 0) return null;
 
     return (
@@ -54,7 +89,24 @@ export default function Feed({ title, movies, id, activeProviderIds = [] }: Feed
                         {layout === "grid" ? <LayoutList className="h-3 w-3" /> : <LayoutGrid className="h-3 w-3" />}
                         {layout === "grid" ? "Carousel View" : "Grid View"}
                     </button>
-                    <span className="text-[10px] tracking-widest cursor-pointer hover:text-white transition-colors font-bold">MORE</span>
+                    {(hasMore || error) && (
+                        <button
+                            onClick={handleLoadMore}
+                            disabled={isPending}
+                            className={`text-[10px] tracking-widest cursor-pointer hover:text-white transition-colors font-bold uppercase disabled:opacity-50 flex items-center gap-1 ${error ? 'text-red-400 hover:text-red-300' : 'text-[#99aabb]'}`}
+                        >
+                            {isPending ? (
+                                <>
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Loading
+                                </>
+                            ) : error ? (
+                                "RETRY"
+                            ) : (
+                                "MORE"
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 
