@@ -10,9 +10,11 @@ interface InfiniteFeedProps {
     initialMovies: Movie[];
     params: DiscoverParams;
     seenIds?: number[];
+    watchlistIds?: number[]; // For persistent watchlist badge
+    userRatings?: Record<number, number>; // For user rating badges (movieId -> rating)
 }
 
-export default function InfiniteFeed({ initialMovies, params, seenIds = [] }: InfiniteFeedProps) {
+export default function InfiniteFeed({ initialMovies, params, seenIds = [], watchlistIds = [], userRatings = {} }: InfiniteFeedProps) {
     const [movies, setMovies] = useState<Movie[]>(initialMovies);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -20,6 +22,8 @@ export default function InfiniteFeed({ initialMovies, params, seenIds = [] }: In
 
     // Store seenIds in a ref for stable access in loadMore
     const seenSetRef = useRef(new Set(seenIds));
+    const watchlistSetRef = useRef(new Set(watchlistIds));
+    const userRatingsRef = useRef(userRatings);
 
     // Listen for live interactions to update the seen set
     useEffect(() => {
@@ -86,7 +90,12 @@ export default function InfiniteFeed({ initialMovies, params, seenIds = [] }: In
         <div className="space-y-12">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 md:gap-8 transition-all duration-500">
                 {movies.map((movie) => (
-                    <PosterCard key={movie.id} movie={movie} />
+                    <PosterCard
+                        key={movie.id}
+                        movie={movie}
+                        isWatchlist={watchlistSetRef.current.has(movie.id)}
+                        userRating={userRatingsRef.current[movie.id] ?? null}
+                    />
                 ))}
             </div>
 

@@ -3,7 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { getAppUserId } from "@/lib/clerk-auth-helpers";
 import { discoverMovies } from "@/lib/tmdb";
-import { Movie } from "@/lib/tmdb"; // type import if needed
+import { Movie } from "@/lib/tmdb";
+import { getUserSeenMovieIds } from "@/app/actions/interactions";
 
 /**
  * Result shape for Tonight recommendations.
@@ -15,9 +16,11 @@ export interface TonightResult {
         hasProviders: boolean;
         hasGenres: boolean;
         hasRuntimeFilter: boolean;
-        appliedFilters: string[]; // e.g., ["providers","genres","runtime"]
+        appliedFilters: string[];
         fellBack: boolean;
-        fellBackFrom: string[]; // which steps were relaxed
+        fellBackFrom: string[];
+        isEmpty: boolean; // True when all movies filtered out
+        emptyReason?: string; // User-facing message for empty state
     };
 }
 
@@ -75,6 +78,8 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
         appliedFilters: [] as string[],
         fellBack: false,
         fellBackFrom: [] as string[],
+        isEmpty: false,
+        emptyReason: undefined as string | undefined,
     };
 
     if (!resolvedUserId) {
@@ -83,6 +88,22 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
         const data = await discoverMovies(params);
         return { movies: data.results, meta };
     }
+
+    // Get seen movies to filter out (canonical: watched OR rated OR favorited)
+    const seenIds = await getUserSeenMovieIds();
+    const seenSet = new Set(seenIds);
+
+    // Helper to filter and apply empty state
+    const filterAndReturn = (movies: Movie[]): TonightResult => {
+        const filtered = movies.filter(m => !seenSet.has(m.id));
+        if (filtered.length === 0 && movies.length > 0) {
+            meta.isEmpty = true;
+            meta.emptyReason = meta.providerMode === "MY_SERVICES"
+                ? "You've seen everything on your services. Update your subscriptions or mark fewer as watched."
+                : "You've seen all recommendations! Explore new genres or check back later.";
+        }
+        return { movies: filtered, meta };
+    };
 
     const { settings, subs, genres } = await getUserPreferences(resolvedUserId);
     const providerIds = subs.map((s) => s.providerId);
@@ -115,7 +136,7 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
     // Fallback ladder if less than 20 results
     const MIN_RESULTS = 20;
     if (data.results.length >= MIN_RESULTS) {
-        return { movies: data.results, meta };
+        return filterAndReturn(data.results);
     }
 
     // Step 1: Drop runtime constraints
@@ -126,7 +147,7 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
     delete params["with_runtime.lte"];
     data = await discoverMovies(params);
     if (data.results.length >= MIN_RESULTS) {
-        return { movies: data.results, meta };
+        return filterAndReturn(data.results);
     }
 
     // Step 2: Reduce genres to first 2
@@ -141,7 +162,7 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
     });
     data = await discoverMovies(params);
     if (data.results.length >= MIN_RESULTS) {
-        return { movies: data.results, meta };
+        return filterAndReturn(data.results);
     }
 
     // Step 3: Drop genres entirely
@@ -155,7 +176,7 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
     });
     data = await discoverMovies(params);
     if (data.results.length >= MIN_RESULTS) {
-        return { movies: data.results, meta };
+        return filterAndReturn(data.results);
     }
 
     // Step 4: Switch to ALL providers
@@ -169,5 +190,5 @@ export async function getTonightRecommendations(userId?: string): Promise<Tonigh
         runtimeMax: undefined,
     });
     data = await discoverMovies(params);
-    return { movies: data.results, meta };
+    return filterAndReturn(data.results);
 }

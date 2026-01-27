@@ -5,7 +5,12 @@ import PosterCard from "@/components/movie/PosterCard";
 import { ComparisonResult } from "@/app/actions/compare";
 import { Star, Trophy, Clock } from "lucide-react";
 
-export default function ComparePanels({ result }: { result: ComparisonResult }) {
+interface ComparePanelsProps {
+    result: ComparisonResult;
+    watchlistIds?: Set<number>;
+}
+
+export default function ComparePanels({ result, watchlistIds }: ComparePanelsProps) {
     const [reveal, setReveal] = useState(false);
 
     useEffect(() => {
@@ -16,14 +21,14 @@ export default function ComparePanels({ result }: { result: ComparisonResult }) 
 
     return (
         <div className="space-y-24">
-            <CompareTopTen result={result} reveal={reveal} />
-            <CompareTasteSync result={result} reveal={reveal} />
-            <CompareRecent result={result} reveal={reveal} />
+            <CompareTopTen result={result} reveal={reveal} watchlistIds={watchlistIds} />
+            <CompareTasteSync result={result} reveal={reveal} watchlistIds={watchlistIds} />
+            <CompareRecent result={result} reveal={reveal} watchlistIds={watchlistIds} />
         </div>
     );
 }
 
-function CompareTopTen({ result, reveal }: { result: ComparisonResult, reveal: boolean }) {
+function CompareTopTen({ result, reveal, watchlistIds }: { result: ComparisonResult, reveal: boolean, watchlistIds?: Set<number> }) {
     const { self, peer, overlaps, movieMap } = result;
 
     return (
@@ -33,14 +38,14 @@ function CompareTopTen({ result, reveal }: { result: ComparisonResult, reveal: b
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative">
                 <div className="hidden md:block absolute left-1/2 top-4 bottom-4 w-px bg-white/5 -translate-x-1/2" />
 
-                <Shelf items={self.topTen} shared={overlaps.topTen} movieMap={movieMap} ratingMap={self.ratingMap} />
-                <Shelf items={peer.topTen} shared={overlaps.topTen} movieMap={movieMap} ratingMap={peer.ratingMap} />
+                <Shelf items={self.topTen} shared={overlaps.topTen} movieMap={movieMap} ratingMap={self.ratingMap} watchlistIds={watchlistIds} />
+                <Shelf items={peer.topTen} shared={overlaps.topTen} movieMap={movieMap} ratingMap={peer.ratingMap} watchlistIds={watchlistIds} />
             </div>
         </section>
     );
 }
 
-function CompareTasteSync({ result, reveal }: { result: ComparisonResult, reveal: boolean }) {
+function CompareTasteSync({ result, reveal, watchlistIds }: { result: ComparisonResult, reveal: boolean, watchlistIds?: Set<number> }) {
     const { self, overlaps, movieMap } = result;
 
     const syncLevels = [
@@ -68,7 +73,7 @@ function CompareTasteSync({ result, reveal }: { result: ComparisonResult, reveal
                             <div className="flex gap-4 justify-center flex-wrap">
                                 {level.ids.map(id => (
                                     <div key={id} className="w-24">
-                                        <PosterItem id={id} movie={movieMap[id]} rating={self.ratingMap[id]} />
+                                        <PosterItem id={id} movie={movieMap[id]} rating={self.ratingMap[id]} linkable isWatchlist={watchlistIds?.has(id)} />
                                     </div>
                                 ))}
                             </div>
@@ -80,7 +85,7 @@ function CompareTasteSync({ result, reveal }: { result: ComparisonResult, reveal
     );
 }
 
-function CompareRecent({ result, reveal }: { result: ComparisonResult, reveal: boolean }) {
+function CompareRecent({ result, reveal, watchlistIds }: { result: ComparisonResult, reveal: boolean, watchlistIds?: Set<number> }) {
     const { self, peer, movieMap } = result;
 
     return (
@@ -89,8 +94,8 @@ function CompareRecent({ result, reveal }: { result: ComparisonResult, reveal: b
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative">
                 <div className="hidden md:block absolute left-1/2 top-4 bottom-4 w-px bg-white/5 -translate-x-1/2" />
-                <RecentGrid recent={self.recent} movieMap={movieMap} />
-                <RecentGrid recent={peer.recent} movieMap={movieMap} />
+                <RecentGrid recent={self.recent} movieMap={movieMap} watchlistIds={watchlistIds} />
+                <RecentGrid recent={peer.recent} movieMap={movieMap} watchlistIds={watchlistIds} />
             </div>
         </section>
     );
@@ -114,7 +119,7 @@ function SectionHeader({ title, icon, count, label }: { title: string, icon: any
     );
 }
 
-function Shelf({ items, shared, movieMap, ratingMap }: { items: number[], shared: number[], movieMap: any, ratingMap: Record<number, number> }) {
+function Shelf({ items, shared, movieMap, ratingMap, watchlistIds }: { items: number[], shared: number[], movieMap: any, ratingMap: Record<number, number>, watchlistIds?: Set<number> }) {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {items.map(id => {
@@ -126,8 +131,8 @@ function Shelf({ items, shared, movieMap, ratingMap }: { items: number[], shared
                             movie={movieMap[id]}
                             rating={ratingMap[id]}
                             className={isShared ? "border-2 border-brand shadow-[0_0_15px_rgba(0,224,84,0.4)]" : ""}
-                            hideRatingUntilHover
                             linkable
+                            isWatchlist={watchlistIds?.has(id)}
                         />
                     </div>
                 );
@@ -137,12 +142,12 @@ function Shelf({ items, shared, movieMap, ratingMap }: { items: number[], shared
     );
 }
 
-function RecentGrid({ recent, movieMap }: { recent: any[], movieMap: any }) {
+function RecentGrid({ recent, movieMap, watchlistIds }: { recent: any[], movieMap: any, watchlistIds?: Set<number> }) {
     return (
         <div className="grid grid-cols-3 gap-3">
             {recent.map((r: any) => (
                 <div key={r.tmdbId} className="relative group">
-                    <PosterItem id={r.tmdbId} movie={movieMap[r.tmdbId]} rating={r.ratingHalf / 2} />
+                    <PosterItem id={r.tmdbId} movie={movieMap[r.tmdbId]} rating={r.ratingHalf / 2} isWatchlist={watchlistIds?.has(r.tmdbId)} />
                 </div>
             ))}
             {recent.length === 0 && <div className="col-span-full py-8 text-center text-[#445566] text-xs font-medium italic bg-white/[0.02] rounded-xl border border-dashed border-white/5">No recent ratings</div>}
@@ -150,7 +155,7 @@ function RecentGrid({ recent, movieMap }: { recent: any[], movieMap: any }) {
     );
 }
 
-function PosterItem({ id, movie, rating, className = "", hideRatingUntilHover = false, linkable = false }: { id: number, movie: any, rating?: number, className?: string, hideRatingUntilHover?: boolean, linkable?: boolean }) {
+function PosterItem({ id, movie, rating, className = "", linkable = false, isWatchlist = false }: { id: number, movie: any, rating?: number, className?: string, linkable?: boolean, isWatchlist?: boolean }) {
     if (!movie) return <div className={`aspect-[2/3] bg-white/5 rounded-lg shimmer ${className}`} />;
 
     // Construct a Movie-like object for PosterCard
@@ -161,5 +166,6 @@ function PosterItem({ id, movie, rating, className = "", hideRatingUntilHover = 
         vote_average: 0
     };
 
-    return <PosterCard movie={movieObj} userRating={rating} className={className} noLink={!linkable} hideRatingUntilHover={hideRatingUntilHover} />;
+    // New PosterCard always hides ratings until hover by design
+    return <PosterCard movie={movieObj} userRating={rating} className={className} noLink={!linkable} isWatchlist={isWatchlist} />;
 }

@@ -6,6 +6,8 @@ import Image from "next/image";
 import PosterCard from "@/components/movie/PosterCard";
 import ExpandableBio from "@/components/actor/ExpandableBio";
 import { ExternalLink } from "lucide-react";
+import { auth } from "@/auth";
+import { getUserWatchlistIds } from "@/app/actions/interactions";
 
 export default async function ActorPage({
     params,
@@ -13,11 +15,14 @@ export default async function ActorPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
+    const session = await auth();
 
-    const [person, credits] = await Promise.all([
+    const [person, credits, watchlistIds] = await Promise.all([
         getPersonDetails(id),
         getPersonCombinedCredits(id),
+        session ? getUserWatchlistIds() : Promise.resolve([]),
     ]);
+    const watchlistSet = new Set(watchlistIds);
 
     if (!person) {
         return (
@@ -125,7 +130,7 @@ export default async function ActorPage({
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 md:gap-8">
                             {movies.map((movie) => (
-                                <PosterCard key={movie.id} movie={movie} />
+                                <PosterCard key={movie.id} movie={movie} isWatchlist={watchlistSet.has(movie.id)} />
                             ))}
                         </div>
                     </section>

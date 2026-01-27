@@ -193,6 +193,50 @@ export async function getUserSeenMovieIds() {
 }
 
 /**
+ * Efficiently get all TMDB IDs of movies in the user's watchlist.
+ */
+export async function getUserWatchlistIds(): Promise<number[]> {
+    const authResult = await requireAppUserIdAction();
+    if (!authResult.ok) return [];
+
+    const interactions = await prisma.movieInteraction.findMany({
+        where: {
+            userId: authResult.userId,
+            watchlisted: true
+        },
+        select: { movieId: true }
+    });
+
+    return interactions.map(i => i.movieId);
+}
+
+/**
+ * Get a map of movieId -> user rating (in star format, 0.5-5 scale).
+ * Used for displaying user rating badges on Discover and other pages.
+ */
+export async function getUserRatingMap(): Promise<Record<number, number>> {
+    const authResult = await requireAppUserIdAction();
+    if (!authResult.ok) return {};
+
+    const interactions = await prisma.movieInteraction.findMany({
+        where: {
+            userId: authResult.userId,
+            ratingHalf: { not: null }
+        },
+        select: { movieId: true, ratingHalf: true }
+    });
+
+    const map: Record<number, number> = {};
+    for (const i of interactions) {
+        if (i.ratingHalf !== null) {
+            // Convert half-star (0-10) to star (0.5-5) format
+            map[i.movieId] = i.ratingHalf / 2;
+        }
+    }
+    return map;
+}
+
+/**
  * Get all movies the user has watched, with pagination.
  */
 export async function getUserWatchedMovies(limit: number = 20, cursor?: number) {
@@ -301,10 +345,13 @@ export async function getUserWatchlistMovies(limit: number = 20, cursor?: number
         ],
         select: {
             movieId: true,
+            ratingHalf: true, // Include rating for hover badge
             movie: {
                 select: {
                     title: true,
-                    posterPath: true
+                    posterPath: true,
+                    backdropPath: true,
+                    voteAverage: true  // TMDb score for fallback badge
                 }
             }
         }
@@ -319,7 +366,11 @@ export async function getUserWatchlistMovies(limit: number = 20, cursor?: number
             id: i.movieId,
             title: i.movie?.title || "Unknown Title",
             posterPath: i.movie?.posterPath,
-            poster_path: i.movie?.posterPath
+            poster_path: i.movie?.posterPath,
+            backdrop_path: i.movie?.backdropPath,
+            vote_average: i.movie?.voteAverage ?? 0,  // TMDb score for fallback badge
+            // Convert half-rating to star rating (divide by 2)
+            userRating: i.ratingHalf ? i.ratingHalf / 2 : null
         })),
         nextCursor
     };

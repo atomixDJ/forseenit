@@ -5,6 +5,7 @@ import CompareHeader from "@/components/compare/CompareHeader";
 import ComparePanels from "@/components/compare/ComparePanels";
 import { getCompareData } from "@/app/actions/compare";
 import { getFollowingList } from "@/app/actions/follow";
+import { getUserWatchlistIds } from "@/app/actions/interactions";
 import { AlertCircle, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { ClientSelector } from "./ClientSelector";
@@ -16,7 +17,11 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
     const params = await searchParams;
     const themHandle = params.them;
 
-    const following = await getFollowingList();
+    const [following, watchlistIds] = await Promise.all([
+        getFollowingList(),
+        getUserWatchlistIds(),
+    ]);
+    const watchlistSet = new Set(watchlistIds);
 
     let result = null;
     let error = null;
@@ -45,7 +50,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                     ) : result ? (
                         <>
                             <CompareHeader self={result.self} peer={result.peer} following={following} />
-                            <ComparePanels result={result} />
+                            <ComparePanels result={result} watchlistIds={watchlistSet} />
                         </>
                     ) : (
                         <EmptyCompareState following={following} />

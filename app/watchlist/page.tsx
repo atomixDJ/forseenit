@@ -38,7 +38,12 @@ export default async function WatchlistPage() {
                             {movies.map((movie) => (
                                 <PosterCard
                                     key={movie.id}
-                                    movie={movie as any}
+                                    movie={{
+                                        ...movie as any,
+                                        vote_average: movie.vote_average ?? 0
+                                    }}
+                                    userRating={movie.userRating}
+                                    tmdbScore={movie.vote_average}
                                 />
                             ))}
                         </div>

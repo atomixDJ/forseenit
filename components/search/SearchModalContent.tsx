@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useDebouncedCallback } from "use-debounce";
+import PosterCard from "@/components/movie/PosterCard";
 
 interface MovieResult {
     id: number;
@@ -55,6 +56,9 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
     const searchParams = useSearchParams();
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Watchlist IDs for badge display
+    const [watchlistIds, setWatchlistIds] = useState<Set<number>>(new Set());
 
     // Load initial state from sessionStorage or URL params
     const getInitialState = (): SavedSearchState => {
@@ -112,6 +116,22 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
             }
         }
         fetchGenres();
+    }, []);
+
+    // Fetch watchlist IDs for badge display
+    useEffect(() => {
+        async function fetchWatchlistIds() {
+            try {
+                const res = await fetch('/api/watchlist-ids');
+                if (res.ok) {
+                    const data = await res.json();
+                    setWatchlistIds(new Set(data.ids || []));
+                }
+            } catch (e) {
+                // Silently fail - badges just won't show
+            }
+        }
+        fetchWatchlistIds();
     }, []);
 
     // Save state to sessionStorage whenever it changes
@@ -486,34 +506,25 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
                                 <div
                                     key={movie.id}
                                     onClick={() => handleMovieClick(movie.id)}
-                                    className="group block cursor-pointer"
+                                    className="cursor-pointer"
                                 >
-                                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-[#1b2228] relative">
-                                        {movie.poster_path ? (
-                                            <Image
-                                                src={getTmdbImage(movie.poster_path)!}
-                                                alt={movie.title}
-                                                fill
-                                                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
-                                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                            />
-                                        ) : (
-                                            <div className="absolute inset-0 flex items-center justify-center text-[#556677] text-xs text-center p-2">
-                                                {movie.title}
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                    <div className="mt-2">
-                                        <p className="text-xs text-white font-medium truncate group-hover:text-[#00e054] transition-colors">
-                                            {movie.title}
-                                        </p>
-                                        {movie.release_date && (
-                                            <p className="text-[10px] text-[#556677]">
-                                                {movie.release_date.slice(0, 4)}
-                                            </p>
-                                        )}
-                                    </div>
+                                    <PosterCard
+                                        movie={{
+                                            id: movie.id,
+                                            title: movie.title,
+                                            poster_path: movie.poster_path,
+                                            release_date: movie.release_date,
+                                            vote_average: movie.vote_average,
+                                            // Required fields with defaults
+                                            overview: "",
+                                            backdrop_path: null,
+                                            genre_ids: movie.genre_ids || [],
+                                            runtime: 0,
+                                            release_dates: { results: [] },
+                                        }}
+                                        isWatchlist={watchlistIds.has(movie.id)}
+                                        noLink={true}
+                                    />
                                 </div>
                             ))}
                         </div>

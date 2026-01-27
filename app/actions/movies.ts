@@ -24,11 +24,13 @@ export async function syncMovie(tmdbId: number) {
                 title: details.title,
                 posterPath: details.poster_path,
                 backdropPath: details.backdrop_path,
+                voteAverage: details.vote_average ?? null,
             },
             update: {
                 title: details.title,
                 posterPath: details.poster_path,
                 backdropPath: details.backdrop_path,
+                voteAverage: details.vote_average ?? null,
             }
         });
     } catch (e) {

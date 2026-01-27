@@ -11,9 +11,10 @@ interface FeedProps {
     movies: Movie[];
     id: string; // Required for local storage persistence and pagination
     activeProviderIds?: number[];
+    watchlistIds?: Set<number>; // For persistent watchlist badge
 }
 
-export default function Feed({ title, movies: initialMovies, id, activeProviderIds = [] }: FeedProps) {
+export default function Feed({ title, movies: initialMovies, id, activeProviderIds = [], watchlistIds }: FeedProps) {
     const [layout, setLayout] = useState<"grid" | "carousel">("grid");
     const [movies, setMovies] = useState(initialMovies);
     const [page, setPage] = useState(1);
@@ -119,7 +120,7 @@ export default function Feed({ title, movies: initialMovies, id, activeProviderI
                         >
                             {movies.map((movie) => (
                                 <div key={movie.id} className="snap-start flex-shrink-0 w-[140px] md:w-[180px]">
-                                    <PosterCard movie={movie} />
+                                    <PosterCard movie={movie} isWatchlist={watchlistIds?.has(movie.id)} />
                                 </div>
                             ))}
                         </div>
@@ -140,7 +141,7 @@ export default function Feed({ title, movies: initialMovies, id, activeProviderI
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 md:gap-8 transition-all duration-500">
                         {movies.map((movie) => (
-                            <PosterCard key={movie.id} movie={movie} />
+                            <PosterCard key={movie.id} movie={movie} isWatchlist={watchlistIds?.has(movie.id)} />
                         ))}
                     </div>
                 )}

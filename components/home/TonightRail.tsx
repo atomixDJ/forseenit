@@ -1,6 +1,8 @@
 import React from "react";
 import { TonightResult } from "@/app/actions/recommendations";
 import Feed from "@/components/movie/Feed";
+import Link from "next/link";
+import { Settings, Film } from "lucide-react";
 
 /**
  * Get time-based title for the recommendation rail.
@@ -15,14 +17,19 @@ function getTimeBasedTitle(): string {
     } else if (hour >= 17 && hour < 21) {
         return "Stream These Tonight";
     } else {
-        return "Stream These Tonight"; // Late night still feels like "tonight"
+        return "Stream These Tonight";
     }
+}
+
+interface TonightRailProps {
+    result: TonightResult;
+    watchlistIds?: Set<number>;
 }
 
 /**
  * TonightRail component renders personalized recommendations with dynamic label and optional "Filters relaxed" pill.
  */
-export default function TonightRail({ result }: { result: TonightResult }) {
+export default function TonightRail({ result, watchlistIds }: TonightRailProps) {
     const { movies, meta } = result;
     const title = getTimeBasedTitle();
 
@@ -38,6 +45,39 @@ export default function TonightRail({ result }: { result: TonightResult }) {
         subtitle = "All services";
     }
 
+    // Empty state when all movies filtered out
+    if (meta.isEmpty || movies.length === 0) {
+        return (
+            <section className="mb-12">
+                <h2 className="text-xl md:text-2xl font-medium text-white mb-1">{title}</h2>
+                {subtitle && (
+                    <p className="text-sm text-[#667788] mb-4">{subtitle}</p>
+                )}
+                <div className="bg-[#1b2228]/50 border border-white/5 rounded-lg p-8 text-center">
+                    <Film className="w-12 h-12 text-[#556677] mx-auto mb-4" />
+                    <p className="text-[#99aabb] text-sm mb-4">
+                        {meta.emptyReason || "You've seen everything! Check back later for new recommendations."}
+                    </p>
+                    <div className="flex justify-center gap-3">
+                        <Link
+                            href="/settings"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-md text-xs font-medium text-[#99aabb] hover:text-white hover:border-white/20 transition-colors"
+                        >
+                            <Settings className="w-3.5 h-3.5" />
+                            Update Services
+                        </Link>
+                        <Link
+                            href="/discover"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-black rounded-md text-xs font-bold hover:bg-brand/90 transition-colors"
+                        >
+                            Explore
+                        </Link>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section className="mb-12">
             <h2 className="text-xl md:text-2xl font-medium text-white mb-1">
@@ -51,7 +91,7 @@ export default function TonightRail({ result }: { result: TonightResult }) {
             {subtitle && (
                 <p className="text-sm text-[#667788] mb-4">{subtitle}</p>
             )}
-            <Feed id="stream-these" title={title} movies={movies} />
+            <Feed id="stream-these" title={title} movies={movies} watchlistIds={watchlistIds} />
         </section>
     );
 }

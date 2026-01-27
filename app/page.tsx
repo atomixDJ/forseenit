@@ -2,7 +2,7 @@ import Header from "@/components/layout/Header";
 import Container from "@/components/layout/Container";
 import Footer from "@/components/layout/Footer";
 import { getNowPlaying, getTrendingMovies } from "@/lib/tmdb";
-import { getUserSeenMovieIds } from "@/app/actions/interactions";
+import { getUserSeenMovieIds, getUserWatchlistIds } from "@/app/actions/interactions";
 import { currentUser } from "@clerk/nextjs/server";
 import Feed from "@/components/movie/Feed";
 import TonightRail from "@/components/home/TonightRail";
@@ -23,15 +23,17 @@ function getTimeBasedGreeting(): { greeting: string; context: string } {
 }
 
 export default async function Home() {
-  const [trending, nowPlaying, user, seenIds, subscriptions] = await Promise.all([
+  const [trending, nowPlaying, user, seenIds, watchlistIds, subscriptions] = await Promise.all([
     getTrendingMovies(),
     getNowPlaying(),
     currentUser(),
     getUserSeenMovieIds(),
+    getUserWatchlistIds(),
     import("@/app/actions/subscriptions").then(m => m.getUserSubscriptions()),
   ]);
 
   const seenSet = new Set(seenIds);
+  const watchlistSet = new Set(watchlistIds);
 
   // Filter movies that have NOT been seen
   const filteredTrending = trending.results.filter((m: any) => !seenSet.has(m.id));
@@ -64,11 +66,11 @@ export default async function Home() {
           </section>
 
           {/* Tonight Rail */}
-          <TonightRail result={tonight} />
+          <TonightRail result={tonight} watchlistIds={watchlistSet} />
 
           {/* Existing feeds */}
-          <Feed id="trending" title="Trending This Week" movies={filteredTrending} />
-          <Feed id="popular" title="Popular This Week" movies={filteredPopular} />
+          <Feed id="trending" title="Trending This Week" movies={filteredTrending} watchlistIds={watchlistSet} />
+          <Feed id="popular" title="Popular This Week" movies={filteredPopular} watchlistIds={watchlistSet} />
         </main>
       </Container>
       <Footer />

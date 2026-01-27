@@ -315,6 +315,7 @@ model Movie {
   posterPath      String?
   backdropPath    String?
   genreIds        String?   // comma-separated TMDB IDs
+  voteAverage     Float?    // TMDb vote average (0-10) for rating badges
   
   // Award Specifics (Optional for general movies)
   eligibleDate    DateTime?

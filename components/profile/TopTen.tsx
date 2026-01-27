@@ -92,7 +92,7 @@ function SortableMovie({ item, isEditing }: { item: TopTenItem; isEditing: boole
 
             {/* Rating Badge - hidden until hover/focus for clean aesthetic */}
             {rating && (
-                <div className="absolute top-1 left-1 bg-brand text-black text-[8px] font-black px-1 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5 z-20 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
+                <div className="absolute top-1 left-1 bg-brand text-black text-[8px] font-black px-1 py-0.5 rounded-[2px] tracking-tighter shadow-lg flex items-center gap-0.5 z-20 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200">
                     <span>{rating.toFixed(1)}</span>
                     <Star className="w-2 h-2 fill-black" strokeWidth={3} />
                 </div>

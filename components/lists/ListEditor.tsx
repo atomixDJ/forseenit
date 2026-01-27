@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Reorder } from "framer-motion";
 import { toggleRanked, updateListPositions, toggleMovieInList, updateListMetadata, copyListToUser } from "@/app/actions/lists";
-import { getUserSeenMovieIds } from "@/app/actions/interactions";
+import { getUserSeenMovieIds, getUserWatchlistIds } from "@/app/actions/interactions";
 import { List as ListIcon, Star, GripVertical, ArrowUp, ArrowDown, Save, Loader2, ChevronLeft, Trash2, Edit3, Share2, BarChart3, Clock, Eye, Hash, Plus, Copy, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -50,16 +50,21 @@ export default function ListEditor({ initialList }: ListEditorProps) {
     const [isToggling, setIsToggling] = useState(false);
     const [isEditingMeta, setIsEditingMeta] = useState(false);
     const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+    const [watchlistIds, setWatchlistIds] = useState<Set<number>>(new Set());
     const [isCopying, setIsCopying] = useState(false);
 
     const isSystem = initialList.isSystem;
 
     useEffect(() => {
-        const fetchSeen = async () => {
-            const ids = await getUserSeenMovieIds();
-            setSeenIds(new Set(ids));
+        const fetchUserData = async () => {
+            const [seen, watchlist] = await Promise.all([
+                getUserSeenMovieIds(),
+                getUserWatchlistIds()
+            ]);
+            setSeenIds(new Set(seen));
+            setWatchlistIds(new Set(watchlist));
         };
-        fetchSeen();
+        fetchUserData();
     }, []);
 
     const handleCopyList = async () => {
@@ -449,6 +454,7 @@ export default function ListEditor({ initialList }: ListEditorProps) {
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-6 p-8">
                                 {items.map((item) => {
                                     const hasSeen = seenIds.has(item.movieId);
+                                    const isInWatchlist = watchlistIds.has(item.movieId);
                                     return (
                                         <div key={item.movieId} className="group relative">
                                             <Link
@@ -464,6 +470,13 @@ export default function ListEditor({ initialList }: ListEditorProps) {
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
                                                     <p className="text-[10px] font-black text-white leading-tight uppercase italic truncate">{item.movie?.title || "Details"}</p>
                                                 </div>
+                                                {/* Blue watchlist badge - top left (persistent) */}
+                                                {isInWatchlist && (
+                                                    <div className="absolute top-2 left-2 bg-blue-500 text-white p-1 rounded-[2px] shadow-lg" title="In your Watchlist">
+                                                        <Eye className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                                {/* Green seen badge - top right */}
                                                 {hasSeen && (
                                                     <div className="absolute top-2 right-2 bg-brand text-black p-1.5 rounded-full shadow-lg">
                                                         <Eye className="w-3 h-3" />

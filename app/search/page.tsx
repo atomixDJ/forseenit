@@ -5,14 +5,22 @@ import SearchInput from "@/components/search/SearchInput";
 import { searchMovies } from "@/lib/tmdb";
 import PosterCard from "@/components/movie/PosterCard";
 import { Sparkles } from "lucide-react";
+import { auth } from "@/auth";
+import { getUserWatchlistIds } from "@/app/actions/interactions";
 
 export default async function SearchPage({
     searchParams,
 }: {
     searchParams: Promise<{ q?: string }>;
 }) {
+    const session = await auth();
     const query = (await searchParams).q;
-    const movies = query ? await searchMovies(query) : null;
+
+    const [movies, watchlistIds] = await Promise.all([
+        query ? searchMovies(query) : Promise.resolve(null),
+        session ? getUserWatchlistIds() : Promise.resolve([]),
+    ]);
+    const watchlistSet = new Set(watchlistIds);
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -40,7 +48,7 @@ export default async function SearchPage({
                                 {movies?.results?.length ? (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 justify-items-center">
                                         {movies.results.map((movie) => (
-                                            <PosterCard key={movie.id} movie={movie} />
+                                            <PosterCard key={movie.id} movie={movie} isWatchlist={watchlistSet.has(movie.id)} />
                                         ))}
                                     </div>
                                 ) : (
