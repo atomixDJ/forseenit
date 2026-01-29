@@ -12,8 +12,8 @@ export default function Header() {
 
     const links = [
         { name: "WATCH", href: "/" },
-        { name: "COMPARE", href: "/compare" },
         { name: "DISCOVER", href: "/discover" },
+        { name: "COMPARE", href: "/compare" },
         { name: "WATCHLIST", href: "/watchlist" },
         { name: "LISTS", href: "/lists" },
         { name: "AWARDS", href: "/awards" },

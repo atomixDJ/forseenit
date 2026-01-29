@@ -3,7 +3,7 @@ const API_KEY = process.env.TMDB_API_KEY;
 
 import { prisma } from './prisma';
 
-type TMDBImageSize = 'w92' | 'w300' | 'w500' | 'w780' | 'w1280' | 'original';
+type TMDBImageSize = 'w92' | 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280' | 'original';
 
 export function getTMDBImage(path: string | null, size: TMDBImageSize = 'w780') {
     if (!path) return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9Ijc1MCIgdmlld0JveD0iMCAwIDUwMCA3NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwMCIgaGVpZ2h0PSI3NTAiIGZpbGw9IiMxYTIyMjgiLz48cGF0aCBkPSJNMjUwIDMwMExDMjUwIDMwMCAyMjUgMzUwIDIwMCAzNTBDMTc1IDM1MCAxNzUgMzAwIDE3NSAzMDBMMjUwIDMwMFoiIGZpbGw9IiMzMzQ0NTUiLz48L3N2Zz4='; // Dark slate premium placeholder

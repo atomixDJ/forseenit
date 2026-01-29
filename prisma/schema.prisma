@@ -32,6 +32,11 @@ model User {
   importRuns    ImportRun[]
   topTen        UserTopTen[]
   
+  // What to Watch Tonight
+  whatToWatchSessions  WhatToWatchSession[]
+  partnerSessions      WhatToWatchSession[] @relation("WhatToWatchPartner")
+  whatToWatchExposures WhatToWatchExposure[]
+  
   // Social - Follow relationships
   // followers: Follow rows where THIS user is the target (followingId)
   // following: Follow rows where THIS user is the source (followerId)
@@ -416,4 +421,65 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+// =============================================================================
+// What to Watch Tonight
+// AI-assisted movie-night picker with wizard, two-user mode, and persistent rail
+// =============================================================================
+
+model WhatToWatchSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  partnerId   String?
+  partner     User?    @relation("WhatToWatchPartner", fields: [partnerId], references: [id])
+  
+  // Wizard settings (typed columns, not JSON)
+  mode        String   // "just_you" | "with_someone"
+  pace        Int      // 0-100 (slow -> exciting)
+  tone        Int      // 0-100 (serious -> funny)
+  era         Int      // 0-100 (old -> new)
+  fairness    Int?     // -1, 0, 1 (required when partnerId != null)
+  region      String   @default("US")
+  
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  results     WhatToWatchResult[]
+  
+  // NOTE: "One active per user" enforced via migration SQL partial unique index
+  @@index([userId])
+}
+
+model WhatToWatchResult {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       WhatToWatchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  heroMovieId   Int      // FK to Movie.tmdbId
+  alt1MovieId   Int
+  alt2MovieId   Int
+  alt3MovieId   Int
+  
+  reasonsJson   String?  // Stringified JSON: { hero: string[], alts: string[][] }
+  seed          BigInt?  // For reproducibility (uses timestamp)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([sessionId, createdAt])  // Optimized for latest-result queries
+}
+
+model WhatToWatchExposure {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId   Int      // FK to Movie.tmdbId
+  sessionId String?
+  shownAt   DateTime @default(now())
+  
+  @@index([userId, movieId])   // Novelty check
+  @@index([userId, shownAt])   // Recency queries
 }

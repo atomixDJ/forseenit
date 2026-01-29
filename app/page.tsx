@@ -6,6 +6,10 @@ import { getUserSeenMovieIds, getUserWatchlistIds } from "@/app/actions/interact
 import { currentUser } from "@clerk/nextjs/server";
 import Feed from "@/components/movie/Feed";
 import TonightRail from "@/components/home/TonightRail";
+import WhatToWatchButton from "@/components/what-to-watch/WhatToWatchButton";
+import WhatToWatchRail from "@/components/what-to-watch/WhatToWatchRail";
+import { getActiveSessionWithLatestResult } from "@/app/actions/what-to-watch";
+import { getAppUserId } from "@/lib/clerk-auth-helpers";
 
 // Dynamic greetings based on time of day
 function getTimeBasedGreeting(): { greeting: string; context: string } {
@@ -23,13 +27,15 @@ function getTimeBasedGreeting(): { greeting: string; context: string } {
 }
 
 export default async function Home() {
-  const [trending, nowPlaying, user, seenIds, watchlistIds, subscriptions] = await Promise.all([
+  const [trending, nowPlaying, user, seenIds, watchlistIds, subscriptions, whatToWatchSession, appUserId] = await Promise.all([
     getTrendingMovies(),
     getNowPlaying(),
     currentUser(),
     getUserSeenMovieIds(),
     getUserWatchlistIds(),
     import("@/app/actions/subscriptions").then(m => m.getUserSubscriptions()),
+    getActiveSessionWithLatestResult(),
+    getAppUserId(),
   ]);
 
   const seenSet = new Set(seenIds);
@@ -39,8 +45,10 @@ export default async function Home() {
   const filteredTrending = trending.results.filter((m: any) => !seenSet.has(m.id));
   const filteredPopular = nowPlaying.results.filter((m: any) => !seenSet.has(m.id));
 
-  // Personalized Tonight recommendations
-  const tonight = await import("@/app/actions/recommendations").then(m => m.getTonightRecommendations());
+  // Personalized Tonight recommendations (only if no active What to Watch session)
+  const tonight = whatToWatchSession
+    ? null
+    : await import("@/app/actions/recommendations").then(m => m.getTonightRecommendations());
 
   const { greeting, context } = getTimeBasedGreeting();
   const firstName = user?.firstName || user?.username || null;
@@ -65,8 +73,17 @@ export default async function Home() {
             </h1>
           </section>
 
-          {/* Tonight Rail */}
-          <TonightRail result={tonight} watchlistIds={watchlistSet} />
+          {/* What to Watch Tonight - Button or Rail */}
+          {appUserId && (
+            whatToWatchSession ? (
+              <WhatToWatchRail session={whatToWatchSession} />
+            ) : (
+              <WhatToWatchButton currentUserId={appUserId} />
+            )
+          )}
+
+          {/* Tonight Rail (show only if no active What to Watch session) */}
+          {tonight && <TonightRail result={tonight} watchlistIds={watchlistSet} />}
 
           {/* Existing feeds */}
           <Feed id="trending" title="Trending This Week" movies={filteredTrending} watchlistIds={watchlistSet} />

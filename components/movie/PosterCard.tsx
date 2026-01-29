@@ -27,6 +27,7 @@ interface PosterCardProps {
     // User state
     isWatchlist?: boolean;      // Blue bookmark ribbon (persistent)
     userRating?: number | null; // Yellow star badge (hover)
+    tmdbScore?: number;         // Explicit TMDb score override
     // System state
     isSystem?: boolean;         // Orange Foreseenit badge (persistent)
     systemLabel?: string;       // e.g., "Curated", "Official", rank number
@@ -39,6 +40,7 @@ export default function PosterCard({
     className = "",
     isWatchlist = false,
     userRating,
+    tmdbScore,
     isSystem = false,
     systemLabel
 }: PosterCardProps) {
@@ -91,11 +93,11 @@ export default function PosterCard({
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Top-Right Rating Badge (hover/focus only, single badge)
     // ─────────────────────────────────────────────────────────────────────────
     const hasUserRating = userRating !== null && userRating !== undefined;
-    const hasTmdbRating = movie.vote_average > 0;
+    const effectiveTmdbScore = tmdbScore ?? movie.vote_average;
+    const hasTmdbRating = effectiveTmdbScore > 0;
 
     let ratingBadge: React.ReactNode = null;
 
@@ -111,7 +113,7 @@ export default function PosterCard({
         // Green badge with film icon for TMDb rating
         ratingBadge = (
             <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white px-1.5 py-0.5 rounded-[2px] shadow-lg opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 z-10">
-                <span className="text-[9px] font-bold">{movie.vote_average.toFixed(1)}</span>
+                <span className="text-[9px] font-bold">{effectiveTmdbScore.toFixed(1)}</span>
                 <Tv2 className="h-2.5 w-2.5" strokeWidth={2} />
             </div>
         );
