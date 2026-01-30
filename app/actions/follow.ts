@@ -193,12 +193,15 @@ export async function getFollowingList() {
         include: {
             following: {
                 select: {
+                    id: true,
                     handle: true,
                     name: true,
                     image: true
                 }
             }
-        }
+        },
+        take: 10, // Limit for performance
+        orderBy: { createdAt: 'desc' } // Most recent follows first
     });
 
     return following.map(f => f.following);

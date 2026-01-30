@@ -6,28 +6,30 @@ import { getUserSeenMovieIds, getUserWatchlistIds } from "@/app/actions/interact
 import { currentUser } from "@clerk/nextjs/server";
 import Feed from "@/components/movie/Feed";
 import TonightRail from "@/components/home/TonightRail";
+import WatchlistRail from "@/components/home/WatchlistRail";
 import WhatToWatchButton from "@/components/what-to-watch/WhatToWatchButton";
 import WhatToWatchRail from "@/components/what-to-watch/WhatToWatchRail";
 import { getActiveSessionWithLatestResult } from "@/app/actions/what-to-watch";
 import { getAppUserId } from "@/lib/clerk-auth-helpers";
+import { getWatchlistRailItems } from "@/app/actions/watchlist-rail";
 
-// Dynamic greetings based on time of day
+// Dynamic time-based subtitle
 function getTimeBasedGreeting(): { greeting: string; context: string } {
   const hour = new Date().getHours();
 
   if (hour >= 5 && hour < 12) {
-    return { greeting: "Good morning", context: "Start your day with something great" };
+    return { greeting: "This Morning", context: "This Morning" };
   } else if (hour >= 12 && hour < 17) {
-    return { greeting: "Good afternoon", context: "Here are some picks for later" };
+    return { greeting: "This Afternoon", context: "This Afternoon" };
   } else if (hour >= 17 && hour < 21) {
-    return { greeting: "What to watch tonight", context: "Here are some great options" };
+    return { greeting: "Tonight", context: "Tonight" };
   } else {
-    return { greeting: "Late night cinema", context: "Perfect for a midnight screening" };
+    return { greeting: "Tonight", context: "Tonight" };
   }
 }
 
 export default async function Home() {
-  const [trending, nowPlaying, user, seenIds, watchlistIds, subscriptions, whatToWatchSession, appUserId] = await Promise.all([
+  const [trending, nowPlaying, user, seenIds, watchlistIds, subscriptions, whatToWatchSession, appUserId, watchlistRailData] = await Promise.all([
     getTrendingMovies(),
     getNowPlaying(),
     currentUser(),
@@ -36,6 +38,7 @@ export default async function Home() {
     import("@/app/actions/subscriptions").then(m => m.getUserSubscriptions()),
     getActiveSessionWithLatestResult(),
     getAppUserId(),
+    getWatchlistRailItems(),
   ]);
 
   const seenSet = new Set(seenIds);
@@ -58,44 +61,43 @@ export default async function Home() {
       <Header />
       <Container>
         <main className="py-12 space-y-8">
-          <section className="mb-16 pt-24">
-            <div className="flex items-center gap-2 text-brand text-[10px] font-black uppercase tracking-[0.3em] mb-4">
-              <span>🎬</span>
-              <span>Tonight&apos;s Picks</span>
+          {/* Hero Section - Two Column Layout */}
+          <section className="mb-16 pt-6 flex items-end justify-between gap-8">
+            {/* Left: Title */}
+            <div>
+              <div className="flex items-center gap-2 text-brand text-[10px] font-black uppercase tracking-[0.3em] mb-4">
+                <span>🎬</span>
+                <span>Curated For You</span>
+              </div>
+              <h1 className="text-6xl md:text-8xl font-black tracking-tighter italic uppercase leading-[0.85]">
+                <span className="text-white">WATCH</span><br />
+                <span className="text-[#334455]">{context.toUpperCase()}</span>
+              </h1>
             </div>
-            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter italic uppercase leading-[0.85]">
-              {firstName ? (
-                <>
-                  {greeting.toUpperCase()}<br />
-                  <span className="text-[#334455]">{firstName.toUpperCase()}</span>
-                </>
-              ) : (
-                <>
-                  WHAT TO<br />
-                  <span className="text-[#334455]">WATCH</span>
-                </>
-              )}
-            </h1>
-            <p className="text-[#667788] text-sm mt-6 max-w-md font-medium">
-              {context}
-            </p>
+
+            {/* Right: What to Watch Button (only if no active session) */}
+            {appUserId && !whatToWatchSession && (
+              <WhatToWatchButton currentUserId={appUserId} />
+            )}
           </section>
 
-          {/* What to Watch Tonight - Button or Rail */}
-          {appUserId && (
-            whatToWatchSession ? (
-              <WhatToWatchRail session={whatToWatchSession} />
-            ) : (
-              <WhatToWatchButton currentUserId={appUserId} />
-            )
+          {/* What to Watch Rail (only if active session) */}
+          {appUserId && whatToWatchSession && (
+            <WhatToWatchRail session={whatToWatchSession} />
           )}
 
           {/* Tonight Rail (show only if no active What to Watch session) */}
           {tonight && <TonightRail result={tonight} watchlistIds={watchlistSet} />}
 
-          {/* Existing feeds */}
+          {/* Rails */}
           <Feed id="trending" title="Trending This Week" movies={filteredTrending} watchlistIds={watchlistSet} />
-          <Feed id="popular" title="Popular This Week" movies={filteredPopular} watchlistIds={watchlistSet} />
+
+          {/* 3rd slot: Watchlist for logged-in users, Popular for logged-out */}
+          {appUserId ? (
+            <WatchlistRail movies={watchlistRailData.movies} userRatings={watchlistRailData.userRatings} />
+          ) : (
+            <Feed id="popular" title="Popular This Week" movies={filteredPopular} watchlistIds={watchlistSet} />
+          )}
         </main>
       </Container>
       <Footer />
