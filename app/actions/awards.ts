@@ -1,50 +1,9 @@
 "use server";
 
-import { prisma } from "../../lib/prisma";
-import { CURRENT_SEASON } from "../../lib/constants";
+import { getAwardsData as getAwardsDataImpl } from "@/lib/awards";
+import type { AwardsDataResult } from "@/lib/awards";
 
-export async function getAwardsData() {
-    try {
-        const now = new Date();
-        const seasonStartYear = parseInt(CURRENT_SEASON.split('_')[0]);
-        const seasonStartDate = new Date(seasonStartYear, 2, 15); // March 15th of start year
-
-        const seasons = await (prisma as any).awardSeason.findMany({
-            where: {
-                OR: [
-                    // Layer 1: Always visible index for the current season
-                    {
-                        season: CURRENT_SEASON
-                    },
-                    // Layer 2: Winners/Festivals that happened in the current calendar window
-                    {
-                        phase: 'WINNERS',
-                        date: {
-                            gte: seasonStartDate,
-                            lt: now
-                        }
-                    }
-                ]
-            },
-            include: {
-                event: true,
-                winners: {
-                    include: {
-                        movie: true
-                    },
-                    orderBy: {
-                        prizeName: 'asc'
-                    }
-                }
-            },
-            orderBy: {
-                date: 'desc'
-            }
-        });
-
-        return seasons;
-    } catch (error) {
-        console.error("Failed to fetch awards data:", error);
-        return [];
-    }
+// Wrap in async function for "use server" compatibility
+export async function getAwardsData(): Promise<AwardsDataResult> {
+    return getAwardsDataImpl();
 }

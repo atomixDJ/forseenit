@@ -8,7 +8,9 @@ import Link from "next/link";
 import { CURRENT_SEASON } from "@/lib/constants";
 
 export default async function AwardsPage() {
-    const seasons = await getAwardsData();
+    const result = await getAwardsData();
+    const isDev = process.env.NODE_ENV !== "production";
+    const { status, seasons } = result;
 
     return (
         <div className="flex flex-col min-h-screen bg-[#14181c]">
@@ -30,7 +32,7 @@ export default async function AwardsPage() {
                         </p>
                     </header>
 
-                    {seasons.length > 0 ? (
+                    {status === "ok" && seasons.length > 0 ? (
                         <div className="space-y-32">
                             {seasons.map((season: any) => {
                                 const event = season.event;
@@ -206,10 +208,26 @@ export default async function AwardsPage() {
                             })}
                         </div>
                     ) : (
-                        <div className="py-40 text-center bg-[#1b2228]/20 rounded-2xl border border-dashed border-white/5">
-                            <Trophy className="w-12 h-12 text-[#334455] mx-auto mb-6 opacity-20" />
-                            <p className="text-[#556677] font-medium italic">The {CURRENT_SEASON.replace('_', '/')} season is just beginning. Awards will appear as winners are announced.</p>
-                        </div>
+                        isDev ? (
+                            <div className="border border-amber-500/30 rounded-lg p-6 bg-amber-900/10">
+                                <p className="text-amber-200 text-sm font-medium mb-2">
+                                    Awards data unavailable (status: {status}).
+                                </p>
+                                <code className="text-xs text-amber-400/70 bg-black/30 px-2 py-1 rounded">
+                                    npx tsx scripts/seed-awards.ts
+                                </code>
+                            </div>
+                        ) : (
+                            <div className="py-40 text-center bg-[#1b2228]/20 rounded-2xl border border-dashed border-white/5">
+                                <Trophy className="w-12 h-12 text-[#334455] mx-auto mb-6 opacity-20" />
+                                <p className="text-[#556677] font-medium italic">
+                                    Awards data is temporarily unavailable.
+                                </p>
+                                <a href="/contact" className="text-brand text-sm mt-4 inline-block hover:underline">
+                                    Report an issue
+                                </a>
+                            </div>
+                        )
                     )}
                 </Container>
             </main>

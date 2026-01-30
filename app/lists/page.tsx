@@ -14,6 +14,8 @@ export default async function ListsPage() {
         getCollectionLists()
     ]);
 
+    const isDev = process.env.NODE_ENV !== "production";
+
     return (
         <div className="flex flex-col min-h-screen bg-[#14181c]">
             <Header />
@@ -23,6 +25,7 @@ export default async function ListsPage() {
                     <ListsClient
                         userLists={userLists as any}
                         collectionLists={collectionLists as any}
+                        isDev={isDev}
                     />
                 </Container>
             </main>
@@ -31,3 +34,4 @@ export default async function ListsPage() {
         </div>
     );
 }
+

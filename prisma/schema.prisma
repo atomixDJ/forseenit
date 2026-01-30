@@ -310,7 +310,7 @@ model AwardSeason {
   winners     AwardWinner[]
   
   @@unique([eventId, year])
-  @@unique([eventId, season])
+  @@unique([eventId, season], name: "eventId_season_unique")
   @@index([season])
 }
 
@@ -342,12 +342,14 @@ model AwardWinner {
   movie       Movie    @relation(fields: [movieId], references: [tmdbId])
   movieTitle  String
   posterPath  String?  // Movie poster
-  personName  String?
+  personName  String?  // Null for movie-only categories, set for person categories
   personPath  String?  // TMDb profile_path for fallback
   isWinner    Boolean  @default(false)
   sourceUrl   String?
   createdAt   DateTime @default(now())
 
+  // DO NOT REMOVE deleteMany in seed script; this unique prevents duplicates
+  @@unique([seasonId, prizeName, movieId, personName], name: "winner_unique")
   @@index([movieId])
 }
 

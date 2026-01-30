@@ -23,9 +23,10 @@ interface List {
 interface ListsClientProps {
     userLists: List[];
     collectionLists: List[];
+    isDev?: boolean;
 }
 
-export default function ListsClient({ userLists, collectionLists }: ListsClientProps) {
+export default function ListsClient({ userLists, collectionLists, isDev = false }: ListsClientProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     const ListCard = ({ list }: { list: List }) => (
@@ -148,7 +149,7 @@ export default function ListsClient({ userLists, collectionLists }: ListsClientP
                 </section>
 
                 {/* Section 2: Collection Lists */}
-                {collectionLists.length > 0 && (
+                {collectionLists.length > 0 ? (
                     <section>
                         <div className="flex items-center gap-4 mb-8">
                             <div className="h-px bg-white/10 flex-grow" />
@@ -163,6 +164,28 @@ export default function ListsClient({ userLists, collectionLists }: ListsClientP
                                 <ListCard key={list.id} list={list} />
                             ))}
                         </div>
+                    </section>
+                ) : (
+                    <section>
+                        {isDev ? (
+                            <div className="border border-amber-500/30 rounded-lg p-6 bg-amber-900/10">
+                                <p className="text-amber-200 text-sm font-medium mb-2">
+                                    System collections unavailable.
+                                </p>
+                                <code className="text-xs text-amber-400/70 bg-black/30 px-2 py-1 rounded">
+                                    npx tsx scripts/seed-community-lists.ts
+                                </code>
+                            </div>
+                        ) : (
+                            <div className="py-16 text-center bg-[#1b2228]/20 rounded-2xl border border-dashed border-white/5">
+                                <p className="text-[#556677] font-medium">
+                                    Curated collections are temporarily unavailable.
+                                </p>
+                                <a href="/contact" className="text-brand text-sm mt-2 inline-block hover:underline">
+                                    Report an issue
+                                </a>
+                            </div>
+                        )}
                     </section>
                 )}
             </div>

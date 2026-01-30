@@ -16,7 +16,11 @@ type Nominee = {
 type BallotData = Record<string, Nominee[]>;
 type UserPicks = Record<string, string>; // category -> nomineeId
 
-export default function BallotUI() {
+interface BallotUIProps {
+    isDev?: boolean;
+}
+
+export default function BallotUI({ isDev = false }: BallotUIProps) {
     const [ballotData, setBallotData] = useState<BallotData>({});
     const [userPicks, setUserPicks] = useState<UserPicks>({});
     const [loading, setLoading] = useState(true);
@@ -53,6 +57,36 @@ export default function BallotUI() {
         return (
             <main className="flex-grow pt-32 pb-20 flex items-center justify-center">
                 <div className="text-white/40 text-sm uppercase tracking-widest">Loading ballot...</div>
+            </main>
+        );
+    }
+
+    // Empty state: ballot data missing (seed issue)
+    if (Object.keys(ballotData).length === 0) {
+        return (
+            <main className="flex-grow pt-32 pb-20 flex items-center justify-center">
+                <Container>
+                    {isDev ? (
+                        <div className="border border-amber-500/30 rounded-lg p-6 bg-amber-900/10 max-w-xl mx-auto">
+                            <p className="text-amber-200 text-sm font-medium mb-2">
+                                Ballot data unavailable. Seed required.
+                            </p>
+                            <code className="text-xs text-amber-400/70 bg-black/30 px-2 py-1 rounded">
+                                npx tsx scripts/seed-awards.ts
+                            </code>
+                        </div>
+                    ) : (
+                        <div className="py-20 text-center">
+                            <Trophy className="w-12 h-12 text-[#334455] mx-auto mb-6 opacity-20" />
+                            <p className="text-[#556677] font-medium italic">
+                                The ballot is coming soon.
+                            </p>
+                            <a href="/contact" className="text-brand text-sm mt-4 inline-block hover:underline">
+                                Report an issue
+                            </a>
+                        </div>
+                    )}
+                </Container>
             </main>
         );
     }
