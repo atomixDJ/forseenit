@@ -54,9 +54,9 @@ export default function WhatToWatchRail({ session }: WhatToWatchRailProps) {
     };
 
     // Dynamic title
-    const title = mode === "with_someone" && partnerName
-        ? `What to Watch (You + ${partnerName})`
-        : "What to Watch (Just You)";
+    const displayTitle = mode === "with_someone" && partnerName
+        ? `You + ${partnerName.toUpperCase()}`
+        : "JUST YOU";
 
     if (!hero) {
         return (
@@ -70,7 +70,10 @@ export default function WhatToWatchRail({ session }: WhatToWatchRailProps) {
         <section className="rounded-2xl overflow-hidden bg-gradient-to-br from-amber-900/40 via-[#1a1510] to-orange-900/20 border border-amber-500/30">
             {/* Header */}
             <div className="px-6 py-4 flex items-center justify-between border-b border-amber-500/20">
-                <h2 className="text-lg font-bold text-amber-300">{title}</h2>
+                <div>
+                    <p className="text-amber-400 text-[10px] font-black uppercase tracking-[0.3em] mb-1">{displayTitle}</p>
+                    <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter">What to Watch</h2>
+                </div>
                 <button
                     type="button"
                     onClick={handleReset}
@@ -109,7 +112,7 @@ export default function WhatToWatchRail({ session }: WhatToWatchRailProps) {
                     {/* Hero details */}
                     <div className="flex-1 min-w-0">
                         <Link href={`/movie/${hero.id}`} className="block group">
-                            <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition-colors truncate">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter group-hover:text-amber-300 transition-colors truncate">
                                 {hero.title}
                             </h3>
                             {hero.year && (

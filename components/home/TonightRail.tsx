@@ -49,7 +49,7 @@ export default function TonightRail({ result, watchlistIds }: TonightRailProps) 
     if (meta.isEmpty || movies.length === 0) {
         return (
             <section className="mb-12">
-                <h2 className="text-xl md:text-2xl font-medium text-white mb-1">{title}</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter mb-1">{title}</h2>
                 {subtitle && (
                     <p className="text-sm text-[#667788] mb-4">{subtitle}</p>
                 )}
@@ -80,10 +80,10 @@ export default function TonightRail({ result, watchlistIds }: TonightRailProps) 
 
     return (
         <section className="mb-12">
-            <h2 className="text-xl md:text-2xl font-medium text-white mb-1">
+            <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter mb-1">
                 {title}
                 {meta.fellBack && (
-                    <span className="ml-2 px-2 py-0.5 bg-gray-800 text-gray-300 text-sm rounded-full">
+                    <span className="ml-3 px-2 py-0.5 bg-[#1b2228] text-[#667788] text-[10px] font-bold rounded-full uppercase tracking-wider not-italic">
                         Filters relaxed
                     </span>
                 )}

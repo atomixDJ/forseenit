@@ -58,19 +58,27 @@ export default async function Home() {
       <Header />
       <Container>
         <main className="py-12 space-y-8">
-          <section className="mb-12">
-            <h1 className="text-2xl md:text-3xl font-light text-[#99aabb] leading-snug">
+          <section className="mb-16 pt-24">
+            <div className="flex items-center gap-2 text-brand text-[10px] font-black uppercase tracking-[0.3em] mb-4">
+              <span>🎬</span>
+              <span>Tonight&apos;s Picks</span>
+            </div>
+            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter italic uppercase leading-[0.85]">
               {firstName ? (
                 <>
-                  {greeting}, <span className="text-white font-bold">{firstName}</span>?
+                  {greeting.toUpperCase()}<br />
+                  <span className="text-[#334455]">{firstName.toUpperCase()}</span>
                 </>
               ) : (
-                <>{greeting}</>
+                <>
+                  WHAT TO<br />
+                  <span className="text-[#334455]">WATCH</span>
+                </>
               )}
-              <span className="block text-lg md:text-xl text-[#667788] mt-1">
-                {context}
-              </span>
             </h1>
+            <p className="text-[#667788] text-sm mt-6 max-w-md font-medium">
+              {context}
+            </p>
           </section>
 
           {/* What to Watch Tonight - Button or Rail */}

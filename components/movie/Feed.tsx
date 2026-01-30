@@ -79,9 +79,11 @@ export default function Feed({ title, movies: initialMovies, id, activeProviderI
     if (!movies || movies.length === 0) return null;
 
     return (
-        <section className="py-8">
-            <div className="section-header flex items-center justify-between">
-                <span>{title}</span>
+        <section className="py-10">
+            <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter">
+                    {title}
+                </h2>
                 <div className="flex items-center gap-4">
                     <button
                         onClick={toggleLayout}
