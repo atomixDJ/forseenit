@@ -23,13 +23,13 @@ export default function Header() {
     return (
         <header className="glass sticky top-0 z-50 py-3 border-b border-white/5 bg-nebula-void/80 backdrop-blur-md">
             <div className="container-custom flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-1.5 group mr-8">
-                    <div className="flex gap-0.5" aria-hidden="true">
-                        <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-orange)' }} />
-                        <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-brand)' }} />
-                        <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--color-blue)' }} />
-                    </div>
-                    <span className="text-2xl font-black text-white ml-2 tracking-tighter italic uppercase transform -skew-x-6">
+                <Link href="/" className="flex items-center gap-2 group mr-8">
+                    <img
+                        src="/brand/forseenit_logo_bw_sm.png?v=2"
+                        alt="ForSeenIt"
+                        className="h-7 w-auto -ml-2.5"
+                    />
+                    <span className="text-2xl font-black text-white tracking-tighter italic uppercase transform -skew-x-6">
                         ForSeenIt
                     </span>
                 </Link>
