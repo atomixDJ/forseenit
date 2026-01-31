@@ -18,6 +18,21 @@ interface WhatToWatchWizardModalProps {
 
 type Step = "mode" | "partner" | "pace" | "tone" | "era" | "fairness";
 
+/**
+ * Get time-based label for the viewing session question.
+ */
+function getTimeLabel(): string {
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 12) {
+        return "this morning";
+    } else if (hour >= 12 && hour < 17) {
+        return "today";
+    } else {
+        return "tonight";
+    }
+}
+
 interface UserResult {
     id: string;
     handle: string;
@@ -170,7 +185,7 @@ export default function WhatToWatchWizardModal({
                     <div className="min-h-[220px] relative">
                         {step === "mode" && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <p className="text-lg font-bold text-white text-center">Who&apos;s watching tonight?</p>
+                                <p className="text-lg font-bold text-white text-center">Who&apos;s watching {getTimeLabel()}?</p>
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         type="button"

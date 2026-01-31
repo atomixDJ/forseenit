@@ -1,163 +1,232 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import Image from "next/image";
 import { Smile, Moon, Rocket, Brain, Flame, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { GenreFilterRow, DecadeFilterRow, RatingFilterRow } from "./filters";
+import {
+    type DiscoveryFilters,
+    type Genre,
+    MOODS,
+    LENGTHS,
+    PROVIDERS,
+    filtersToParams,
+    hasActiveFilters,
+    EMPTY_FILTERS,
+} from "@/lib/discovery/filters";
 
-const MOODS = [
-    { id: "uplifting", name: "Uplifting", icon: Smile, genres: "35,16,10751" },
-    { id: "dark", name: "Dark", icon: Moon, genres: "27,53,80" },
-    { id: "epic", name: "Epic", icon: Rocket, genres: "12,878,14" },
-    { id: "cerebral", name: "Thoughtful", icon: Brain, genres: "9648,18,99" },
-    { id: "intense", name: "Intense", icon: Flame, genres: "28,10752,53" },
-];
+// Icon mapping for moods
+const MOOD_ICONS = {
+    uplifting: Smile,
+    dark: Moon,
+    epic: Rocket,
+    thoughtful: Brain,
+    intense: Flame,
+} as const;
 
-const RUNTIMES = [
-    { id: "short", name: "< 90m", max: 90 },
-    { id: "medium", name: "90-120m", min: 90, max: 120 },
-    { id: "long", name: "> 120m", min: 120 },
-];
+interface FilterBarProps {
+    /** Genre list - loaded server-side and passed down */
+    genres: Genre[];
+    /** Current filter state - derived from URL params, single source of truth */
+    filters: DiscoveryFilters;
+    /** Callback to update filters - should update URL via router.replace */
+    onChange: (next: DiscoveryFilters) => void;
+}
 
-const PROVIDERS = [
-    { id: "8", name: "Netflix" },
-    { id: "337", name: "Disney+" },
-    { id: "1899", name: "Max" },
-    { id: "119", name: "Prime" },
-    { id: "350", name: "Apple TV" },
-];
-
-export default function FilterBar() {
+/**
+ * Unified filter bar for the Discover page.
+ * 
+ * IMPORTANT: No internal filter state. All visual "active" states are computed
+ * directly from the `filters` prop. The URL search params are the single source
+ * of truth, and `onChange` should update them via router.replace.
+ * 
+ * Layout:
+ * - Row 1 (Core Search): Genre, Decade, Rating
+ * - Row 2 (Vibe): Mood, Length, Streaming
+ * 
+ * Clear All resets all 6 filter axes and removes any pagination params.
+ */
+export default function FilterBar({ genres, filters, onChange }: FilterBarProps) {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
 
-    const currentMood = searchParams.get("mood");
-    const currentRuntime = searchParams.get("runtime");
-    const currentProviders = searchParams.get("providers")?.split(",") || [];
-
-    const updateFilters = (updates: Record<string, string | null>) => {
-        const params = new URLSearchParams(searchParams.toString());
-
-        Object.entries(updates).forEach(([key, value]) => {
-            if (value === null) {
-                params.delete(key);
-            } else {
-                params.set(key, value);
-            }
-        });
-
-        startTransition(() => {
-            router.push(`/discover?${params.toString()}`);
-        });
+    // Helper to update a single filter axis
+    const updateFilter = <K extends keyof DiscoveryFilters>(
+        key: K,
+        value: DiscoveryFilters[K]
+    ) => {
+        const next = { ...filters, [key]: value };
+        onChange(next);
     };
 
-    const toggleProvider = (id: string) => {
-        let nextProviders = [...currentProviders];
-        if (nextProviders.includes(id)) {
-            nextProviders = nextProviders.filter(p => p !== id);
-        } else {
-            nextProviders.push(id);
-        }
-        updateFilters({ providers: nextProviders.length > 0 ? nextProviders.join(",") : null });
+    // Toggle streaming provider (multi-select)
+    const toggleProvider = (id: number) => {
+        const current = filters.streamingProviderIds;
+        const next = current.includes(id)
+            ? current.filter(p => p !== id)
+            : [...current, id];
+        updateFilter("streamingProviderIds", next);
     };
 
+    // Clear all filters and reset pagination
     const clearFilters = () => {
-        router.push("/discover");
+        startTransition(() => {
+            router.replace("/discover");
+        });
     };
+
+    const showClearButton = hasActiveFilters(filters);
 
     return (
-        <div className="space-y-8 py-6 sticky top-[72px] bg-[#14181c] z-30 pb-10 border-b border-white/5">
-            <div className="flex flex-wrap items-center gap-10">
-                {/* Moods */}
-                <div className="space-y-3">
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#556677]">MOOD</span>
-                    <div className="flex flex-wrap gap-2">
-                        {MOODS.map((mood) => {
-                            const Icon = mood.icon;
-                            const isActive = currentMood === mood.id;
-                            return (
-                                <button
-                                    key={mood.id}
-                                    onClick={() => updateFilters({ mood: isActive ? null : mood.id, genres: isActive ? null : mood.genres })}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-xs font-bold uppercase tracking-widest ${isActive
-                                            ? "bg-brand border-brand text-[#14181c]"
-                                            : "bg-white/5 border-white/10 text-[#99aabb] hover:border-brand/40 hover:text-white"
-                                        }`}
-                                >
-                                    <Icon className={`w-3 h-3 ${isActive ? "text-[#14181c]" : "text-brand"}`} />
-                                    {mood.name}
-                                </button>
-                            );
-                        })}
-                    </div>
+        <div className="space-y-4 py-6 sticky top-[72px] bg-[#14181c] z-30 pb-8 border-b border-white/5">
+            {/* Row 1: Core Search Filters */}
+            <div className="space-y-3">
+                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#556677]">
+                    SEARCH BY
+                </span>
+                <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+                    <GenreFilterRow
+                        genres={genres}
+                        value={filters.genreId}
+                        onChange={(id) => updateFilter("genreId", id)}
+                        size="full"
+                    />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <DecadeFilterRow
+                        value={filters.decadeKey}
+                        onChange={(key) => updateFilter("decadeKey", key)}
+                        size="full"
+                    />
+                    <RatingFilterRow
+                        value={filters.minRating}
+                        onChange={(rating) => updateFilter("minRating", rating)}
+                        size="full"
+                    />
+                </div>
+            </div>
+
+            {/* Horizontal separator */}
+            <div className="border-t border-white/5" />
+
+            {/* Row 2: Vibe Filters - smaller, compact pills */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                {/* Mood */}
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#556677] mr-1">
+                        MOOD
+                    </span>
+                    {MOODS.map((mood) => {
+                        const Icon = MOOD_ICONS[mood.key as keyof typeof MOOD_ICONS];
+                        const isActive = filters.moodKey === mood.key;
+                        return (
+                            <button
+                                key={mood.key}
+                                type="button"
+                                onClick={() => updateFilter("moodKey", isActive ? null : mood.key)}
+                                className={cn(
+                                    "flex items-center gap-1 px-2.5 py-1 rounded-full border transition-all text-[10px] font-medium",
+                                    isActive
+                                        ? "bg-brand border-brand text-[#14181c]"
+                                        : "bg-[#2a3440] border-white/5 text-[#99aabb] hover:bg-[#3a4550] hover:text-white"
+                                )}
+                            >
+                                <Icon className={cn("w-2.5 h-2.5", isActive ? "text-[#14181c]" : "text-brand")} />
+                                {mood.label}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Runtime */}
-                <div className="space-y-3">
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#556677]">LENGTH</span>
-                    <div className="flex flex-wrap gap-2">
-                        {RUNTIMES.map((rt) => {
-                            const isActive = currentRuntime === rt.id;
-                            return (
-                                <button
-                                    key={rt.id}
-                                    onClick={() => updateFilters({
-                                        runtime: isActive ? null : rt.id,
-                                        'runtime_min': isActive ? null : rt.min?.toString() || null,
-                                        'runtime_max': isActive ? null : rt.max?.toString() || null
-                                    })}
-                                    className={`px-4 py-2 rounded-full border transition-all text-xs font-bold uppercase tracking-widest ${isActive
-                                            ? "bg-brand border-brand text-[#14181c]"
-                                            : "bg-white/5 border-white/10 text-[#99aabb] hover:border-brand/40 hover:text-white"
-                                        }`}
-                                >
-                                    {rt.name}
-                                </button>
-                            );
-                        })}
-                    </div>
+                {/* Vertical separator */}
+                <div className="h-5 border-l border-white/10" />
+
+                {/* Length */}
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#556677] mr-1">
+                        LENGTH
+                    </span>
+                    {LENGTHS.map((length) => {
+                        const isActive = filters.lengthKey === length.key;
+                        return (
+                            <button
+                                key={length.key}
+                                type="button"
+                                onClick={() => updateFilter("lengthKey", isActive ? null : length.key)}
+                                className={cn(
+                                    "px-2.5 py-1 rounded-full border transition-all text-[10px] font-medium",
+                                    isActive
+                                        ? "bg-brand border-brand text-[#14181c]"
+                                        : "bg-[#2a3440] border-white/5 text-[#99aabb] hover:bg-[#3a4550] hover:text-white"
+                                )}
+                            >
+                                {length.label}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Providers */}
-                <div className="space-y-3">
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#556677]">STREAMING</span>
-                    <div className="flex flex-wrap gap-2">
-                        {PROVIDERS.map((provider) => {
-                            const isActive = currentProviders.includes(provider.id);
-                            return (
-                                <button
-                                    key={provider.id}
-                                    onClick={() => toggleProvider(provider.id)}
-                                    className={`px-4 py-2 rounded-full border transition-all text-xs font-bold uppercase tracking-widest ${isActive
-                                            ? "bg-brand border-brand text-[#14181c]"
-                                            : "bg-white/5 border-white/10 text-[#99aabb] hover:border-brand/40 hover:text-white"
-                                        }`}
-                                >
-                                    {provider.name}
-                                </button>
-                            );
-                        })}
-                    </div>
+                {/* Vertical separator */}
+                <div className="h-5 border-l border-white/10" />
+
+                {/* Streaming */}
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#556677] mr-1">
+                        STREAMING
+                    </span>
+                    {PROVIDERS.map((provider) => {
+                        const isActive = filters.streamingProviderIds.includes(provider.id);
+                        return (
+                            <button
+                                key={provider.id}
+                                type="button"
+                                onClick={() => toggleProvider(provider.id)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all text-[10px] font-medium",
+                                    isActive
+                                        ? "bg-brand border-brand text-[#14181c]"
+                                        : "bg-[#2a3440] border-white/5 text-[#99aabb] hover:bg-[#3a4550] hover:text-white"
+                                )}
+                            >
+                                <Image
+                                    src={`https://image.tmdb.org/t/p/w92${provider.logo_path}`}
+                                    alt={provider.name}
+                                    width={12}
+                                    height={12}
+                                    className="rounded-sm"
+                                />
+                                {provider.name}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Clear Actions */}
-                <div className="ml-auto pt-6 flex items-center gap-4">
-                    {searchParams.toString() && (
-                        <button
-                            onClick={clearFilters}
-                            className="flex items-center gap-2 text-[#556677] hover:text-brand transition-colors text-[10px] font-black uppercase tracking-widest"
-                        >
-                            <Trash2 className="w-3 h-3" />
-                            Reset All
-                        </button>
-                    )}
-                    {isPending && (
-                        <div className="flex items-center gap-2 text-brand text-[10px] font-black uppercase tracking-widest">
-                            <div className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                            Updating...
+                {/* Clear All + Loading */}
+                {(showClearButton || isPending) && (
+                    <>
+                        <div className="h-5 border-l border-white/10" />
+                        <div className="flex items-center gap-4">
+                            {showClearButton && (
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    className="flex items-center gap-1.5 text-[#556677] hover:text-brand transition-colors text-[10px] font-bold uppercase tracking-wider"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    Clear All
+                                </button>
+                            )}
+                            {isPending && (
+                                <div className="flex items-center gap-1.5 text-brand text-[10px] font-bold uppercase tracking-wider">
+                                    <div className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                                    Updating...
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
         </div>
     );

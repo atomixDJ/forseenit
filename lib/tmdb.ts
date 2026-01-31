@@ -129,6 +129,11 @@ export interface DiscoverParams {
     sort_by?: string;
     with_keywords?: string;
     with_watch_monetization_types?: string;
+    // Decade filtering (unified discovery)
+    'primary_release_date.gte'?: string;  // YYYY-MM-DD
+    'primary_release_date.lte'?: string;  // YYYY-MM-DD
+    // Rating filtering (unified discovery)
+    'vote_average.gte'?: number;
 }
 
 /**

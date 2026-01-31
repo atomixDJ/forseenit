@@ -1,11 +1,22 @@
 "use client";
 
-import { Search as SearchIcon, Loader2, Film, Calendar, Star, X as XIcon, Users } from "lucide-react";
+/**
+ * Search Modal Content
+ * 
+ * ISOLATION NOTE: This modal maintains LOCAL filter state only.
+ * It is intentionally NOT synced with the /discover page URL params.
+ * If future sync is needed, do it via query params—not by threading
+ * state across unrelated components.
+ */
+
+import { Search as SearchIcon, Loader2, X as XIcon, Users, Film } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useDebouncedCallback } from "use-debounce";
 import PosterCard from "@/components/movie/PosterCard";
+import { GenreFilterRow, DecadeFilterRow, RatingFilterRow } from "@/components/discovery/filters";
+import { DECADES, RATINGS, type Genre } from "@/lib/discovery/filters";
 
 interface MovieResult {
     id: number;
@@ -24,10 +35,7 @@ interface SearchModalContentProps {
     onMovieSelect?: () => void;  // Callback to close modal
 }
 
-interface Genre {
-    id: number;
-    name: string;
-}
+// Genre type imported from @/lib/discovery/filters
 
 interface UserResult {
     id: string;
@@ -39,17 +47,15 @@ interface UserResult {
 
 type SearchTab = "movies" | "people";
 
-const DECADES = ["2020s", "2010s", "2000s", "1990s", "1980s", "Classic"];
-
-const RATINGS = ["9+", "8+", "7+", "6+"];
+// DECADES and RATINGS imported from @/lib/discovery/filters
 
 const STORAGE_KEY = 'search-modal-state';
 
 interface SavedSearchState {
     query: string;
-    genres: number[];
-    decade: string | null;
-    rating: string | null;
+    genreId: number | null;  // Changed to single-select to match shared component
+    decadeKey: string | null;
+    minRating: number | null;
 }
 
 export default function SearchModalContent({ onMovieSelect }: SearchModalContentProps = {}) {
@@ -63,17 +69,24 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
     // Load initial state from sessionStorage or URL params
     const getInitialState = (): SavedSearchState => {
         if (typeof window === 'undefined') {
-            return { query: searchParams.get("q") || "", genres: [], decade: null, rating: null };
+            return { query: searchParams.get("q") || "", genreId: null, decadeKey: null, minRating: null };
         }
         try {
             const saved = sessionStorage.getItem(STORAGE_KEY);
             if (saved) {
-                return JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                // Handle legacy format migration
+                return {
+                    query: parsed.query || "",
+                    genreId: parsed.genreId ?? (parsed.genres?.[0] ?? null),
+                    decadeKey: parsed.decadeKey ?? parsed.decade ?? null,
+                    minRating: parsed.minRating ?? (parsed.rating ? parseInt(parsed.rating) : null),
+                };
             }
         } catch (e) {
             // Ignore parse errors
         }
-        return { query: searchParams.get("q") || "", genres: [], decade: null, rating: null };
+        return { query: searchParams.get("q") || "", genreId: null, decadeKey: null, minRating: null };
     };
 
     const initialState = getInitialState();
@@ -83,10 +96,11 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
     const [error, setError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(!!initialState.query);
 
-    // Filter states - initialize from saved state
-    const [selectedGenres, setSelectedGenres] = useState<number[]>(initialState.genres);
-    const [selectedDecade, setSelectedDecade] = useState<string | null>(initialState.decade);
-    const [selectedRating, setSelectedRating] = useState<string | null>(initialState.rating);
+    // Filter states - local only, NOT synced with /discover URL
+    // Uses single-select to match shared filter component behavior
+    const [selectedGenreId, setSelectedGenreId] = useState<number | null>(initialState.genreId);
+    const [selectedDecadeKey, setSelectedDecadeKey] = useState<string | null>(initialState.decadeKey);
+    const [selectedMinRating, setSelectedMinRating] = useState<number | null>(initialState.minRating);
 
     // Dynamic genres from TMDB
     const [genres, setGenres] = useState<Genre[]>([]);
@@ -138,16 +152,16 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
     useEffect(() => {
         const stateToSave: SavedSearchState = {
             query: inputValue,
-            genres: selectedGenres,
-            decade: selectedDecade,
-            rating: selectedRating,
+            genreId: selectedGenreId,
+            decadeKey: selectedDecadeKey,
+            minRating: selectedMinRating,
         };
         try {
             sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
         } catch (e) {
             // Ignore storage errors
         }
-    }, [inputValue, selectedGenres, selectedDecade, selectedRating]);
+    }, [inputValue, selectedGenreId, selectedDecadeKey, selectedMinRating]);
 
     // Auto-focus input on mount and fetch initial results if query exists
     useEffect(() => {
@@ -262,61 +276,38 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
         return `https://image.tmdb.org/t/p/w185${path}`;
     };
 
-    const toggleGenre = (genreId: number) => {
-        // Single-select: clicking same genre deselects, otherwise selects new one
-        setSelectedGenres(prev =>
-            prev.includes(genreId) ? [] : [genreId]
-        );
-    };
-
     const clearFilters = () => {
-        setSelectedGenres([]);
-        setSelectedDecade(null);
-        setSelectedRating(null);
+        setSelectedGenreId(null);
+        setSelectedDecadeKey(null);
+        setSelectedMinRating(null);
     };
 
-    const hasActiveFilters = selectedGenres.length > 0 || selectedDecade || selectedRating;
+    const hasActiveFilters = selectedGenreId !== null || selectedDecadeKey !== null || selectedMinRating !== null;
 
-    // Helper to get year range for decade filter
-    const getDecadeRange = (decade: string): [number, number] => {
-        switch (decade) {
-            case "2020s": return [2020, 2029];
-            case "2010s": return [2010, 2019];
-            case "2000s": return [2000, 2009];
-            case "1990s": return [1990, 1999];
-            case "1980s": return [1980, 1989];
-            case "Classic": return [0, 1979];
-            default: return [0, 9999];
-        }
-    };
-
-    // Helper to get minimum rating
-    const getMinRating = (rating: string): number => {
-        return parseFloat(rating.replace("+", ""));
+    // Helper to get year range for decade filter using shared DECADES constant
+    const getDecadeRange = (key: string): [number, number] => {
+        const decade = DECADES.find(d => d.key === key);
+        if (!decade) return [0, 9999];
+        return [decade.minYear ?? 0, decade.maxYear];
     };
 
     // Filter results based on selected filters
     const filteredResults = results.filter((movie) => {
-        // Genre filter - movie matches ANY selected genre (OR logic)
-        // Movies with unknown/missing genres pass through
-        if (selectedGenres.length > 0 && movie.genre_ids && movie.genre_ids.length > 0) {
-            const matchesAny = selectedGenres.some(genreId =>
-                movie.genre_ids!.includes(genreId)
-            );
-            if (!matchesAny) return false;
+        // Genre filter - movie matches selected genre
+        if (selectedGenreId !== null && movie.genre_ids && movie.genre_ids.length > 0) {
+            if (!movie.genre_ids.includes(selectedGenreId)) return false;
         }
 
         // Decade filter
-        if (selectedDecade && movie.release_date) {
+        if (selectedDecadeKey && movie.release_date) {
             const year = parseInt(movie.release_date.slice(0, 4));
-            const [minYear, maxYear] = getDecadeRange(selectedDecade);
+            const [minYear, maxYear] = getDecadeRange(selectedDecadeKey);
             if (year < minYear || year > maxYear) return false;
         }
 
         // Rating filter
-        if (selectedRating && movie.vote_average) {
-            const minRating = getMinRating(selectedRating);
-            if (movie.vote_average < minRating) return false;
+        if (selectedMinRating !== null && movie.vote_average) {
+            if (movie.vote_average < selectedMinRating) return false;
         }
 
         return true;
@@ -386,71 +377,27 @@ export default function SearchModalContent({ onMovieSelect }: SearchModalContent
             </div>
 
             {/* Filters Section - Only for Movies */}
+            {/* Uses shared filter components with size="compact" for modal styling */}
             {searchTab === "movies" && (
-                <div className="mb-6 space-y-4">
-                    {/* Genre Filters */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                            <Film className="w-3 h-3" />
-                            <span>Genre</span>
-                        </div>
-                        {genresLoading ? (
-                            <span className="text-[10px] text-[#556677] italic">Loading...</span>
-                        ) : (
-                            genres.map((genre) => (
-                                <button
-                                    key={genre.id}
-                                    onClick={() => toggleGenre(genre.id)}
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedGenres.includes(genre.id)
-                                        ? "bg-[#00e054] text-black"
-                                        : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
-                                        }`}
-                                >
-                                    {genre.name}
-                                </button>
-                            ))
-                        )}
-                    </div>
-
-                    {/* Decade Filters */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>Decade</span>
-                        </div>
-                        {DECADES.map((decade) => (
-                            <button
-                                key={decade}
-                                onClick={() => setSelectedDecade(selectedDecade === decade ? null : decade)}
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedDecade === decade
-                                    ? "bg-[#ff8000] text-black"
-                                    : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
-                                    }`}
-                            >
-                                {decade}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Rating Filters */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-[#556677] uppercase tracking-wider mr-1">
-                            <Star className="w-3 h-3" />
-                            <span>Rating</span>
-                        </div>
-                        {RATINGS.map((rating) => (
-                            <button
-                                key={rating}
-                                onClick={() => setSelectedRating(selectedRating === rating ? null : rating)}
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${selectedRating === rating
-                                    ? "bg-[#40bcf4] text-black"
-                                    : "bg-[#1b2228] text-[#778899] hover:bg-[#2a3440] hover:text-white border border-white/5"
-                                    }`}
-                            >
-                                {rating}
-                            </button>
-                        ))}
-
+                <div className="mb-6 space-y-3">
+                    <GenreFilterRow
+                        genres={genres}
+                        value={selectedGenreId}
+                        onChange={setSelectedGenreId}
+                        size="compact"
+                        isLoading={genresLoading}
+                    />
+                    <DecadeFilterRow
+                        value={selectedDecadeKey}
+                        onChange={setSelectedDecadeKey}
+                        size="compact"
+                    />
+                    <div className="flex items-center gap-2">
+                        <RatingFilterRow
+                            value={selectedMinRating}
+                            onChange={setSelectedMinRating}
+                            size="compact"
+                        />
                         {/* Clear Filters Button */}
                         {hasActiveFilters && (
                             <button
