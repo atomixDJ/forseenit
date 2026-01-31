@@ -3,7 +3,6 @@ import Container from "@/components/layout/Container";
 import Footer from "@/components/layout/Footer";
 import { discoverMovies, type DiscoverParams } from "@/lib/tmdb";
 import InfiniteFeed from "@/components/movie/InfiniteFeed";
-import FilterBar from "@/components/discovery/FilterBar";
 import { getUserSeenMovieIds } from "@/app/actions/interactions";
 import { auth } from "@/auth";
 import { getMovieGenres } from "@/lib/discovery/genres";
@@ -14,7 +13,7 @@ import {
     getMoodGenreIds,
     type DiscoveryFilters,
 } from "@/lib/discovery/filters";
-import FilterBarClient from "@/components/discovery/FilterBarClient";
+import FilterSidebarClient from "@/components/discovery/FilterSidebarClient";
 
 export default async function DiscoverPage({
     searchParams,
@@ -54,19 +53,27 @@ export default async function DiscoverPage({
         <div className="flex flex-col min-h-screen">
             <Header />
             <Container>
-                <main className="py-12 space-y-12">
-                    <section className="space-y-4">
+                <main className="py-12">
+                    {/* Page Header */}
+                    <section className="mb-8">
                         <h1 className="text-4xl md:text-6xl font-black text-white italic tracking-tighter uppercase leading-none">
                             Discover<span className="text-brand">.</span>
                         </h1>
-                        <p className="text-[#99aabb] uppercase text-[10px] font-bold tracking-[0.4em] max-w-xl">
+                        <p className="text-[#99aabb] uppercase text-[10px] font-bold tracking-[0.4em] max-w-xl mt-2">
                             Filter by mood, length, or platform. Find exactly what you didn't know you wanted to watch.
                         </p>
                     </section>
 
-                    <FilterBarClient genres={genres} initialFilters={filters} />
+                    {/* Two-Column Layout */}
+                    <div className="flex gap-8">
+                        {/* Left Column: Filters */}
+                        <FilterSidebarClient genres={genres} initialFilters={filters} />
 
-                    <InfiniteFeed initialMovies={filteredMovies} params={discoverParams} seenIds={seenIds} />
+                        {/* Right Column: Movie Results */}
+                        <div className="flex-1 min-w-0">
+                            <InfiniteFeed initialMovies={filteredMovies} params={discoverParams} seenIds={seenIds} />
+                        </div>
+                    </div>
                 </main>
             </Container>
             <Footer />
@@ -128,9 +135,9 @@ function buildDiscoverParams(filters: DiscoveryFilters): DiscoverParams {
         params["with_runtime.lte"] = runtimeRange.max;
     }
 
-    // Streaming providers
+    // Streaming providers (OR logic - show movies on ANY selected service)
     if (filters.streamingProviderIds.length > 0) {
-        params.with_watch_providers = filters.streamingProviderIds.join(",");
+        params.with_watch_providers = filters.streamingProviderIds.join("|");
         params.with_watch_monetization_types = "flatrate";
         params.watch_region = "US";
     }

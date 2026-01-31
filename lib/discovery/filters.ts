@@ -75,6 +75,10 @@ export const MOODS = [
     { key: "epic", label: "Epic", icon: "Rocket", genreIds: "12,878,14" },
     { key: "thoughtful", label: "Thoughtful", icon: "Brain", genreIds: "9648,18,99" },
     { key: "intense", label: "Intense", icon: "Flame", genreIds: "28,10752,53" },
+    { key: "heartwarming", label: "Heartwarming", icon: "Heart", genreIds: "10749,10751,18" },
+    { key: "nostalgic", label: "Nostalgic", icon: "Clock", genreIds: "10751,18,35" },
+    { key: "quirky", label: "Quirky", icon: "Sparkles", genreIds: "35,14,16" },
+    { key: "mindbending", label: "Mind-Bending", icon: "Eye", genreIds: "878,9648,14" },
 ] as const;
 
 export type MoodKey = typeof MOODS[number]["key"];
